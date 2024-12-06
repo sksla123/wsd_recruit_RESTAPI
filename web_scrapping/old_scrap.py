@@ -1,10 +1,14 @@
 import os
-import requests
-from tqdm.auto import tqdm
-from bs4 import BeautifulSoup
-import pandas as pd
-import urllib.parse
 import time
+import urllib.parse
+import pandas as pd
+
+from tqdm.auto import tqdm
+
+import requests
+from bs4 import BeautifulSoup
+
+from dataclasses import dataclass
 
 def getResponsedHtml(url, 
                      headers = {
@@ -63,6 +67,11 @@ class WebScrapper:
         # print(elements)
         # print(data)
         
+@dataclass
+class CodeTable:
+    a: pd.DataFrame
+    b: pd.DataFrame
+
 
 class WebScrapperCode():
     def  __init__(self, base_url, headers, num_of_tries=5, cache_folder='./__htmlCache__'):
@@ -70,6 +79,7 @@ class WebScrapperCode():
         self.headers = headers
         self.num_of_tries = num_of_tries
         self.cache_folder = cache_folder
+        self.ignore_cache = False
 
         self.urls = {}
         
@@ -82,18 +92,20 @@ class WebScrapperCode():
         # 직무/직업 코드용 url
         self.urls['job_code'] = self.base_url + "/guide/code-table4"
 
-        self.rawHTML = {}
-        self.code_tables = {}
+        self.rawHTMLs = {}
         self.requestRawHTML()
 
+    def setIgnoreCache(self, flag=False):
+        self.ignore_cache = flag
+
     # 여기서부턴 soup 형식의 객체를 모두 raw_html(가공되지 않은 html)로 선언
-    def requestRawHTML(self, ignore_cache=False):
+    def requestRawHTML(self):
         keys = self.urls.keys()
         for key in tqdm(keys, total=len(keys)):
-            raw_html = getResponsedHtml(self.urls[key], self.headers, self.num_of_tries, self.cache_folder, ignore_cache)
-            self.rawHTML[key] = raw_html
+            raw_html = getResponsedHtml(self.urls[key], self.headers, self.num_of_tries, self.cache_folder, self.ignore_cache)
+            self.rawHTMLs[key] = raw_html
 
-    def _processTableFromRawHTML(self, raw_html):
+    def _processTableFromRawHTML1(self, raw_html):
         table_dict = {}
         rawTables = raw_html.find_all('div', class_='tabpanel')
 
@@ -102,12 +114,50 @@ class WebScrapperCode():
             table = rawTable.find('table')
             if table:
                 rows = table.find_all('tr')
-                headers = [header.text for header in rows[0].find_all('th')]
+                columns = [col_name.text for col_name in rows[0].find_all('th')]
                 data = [[cell.text for cell in row.find_all('td')] for row in rows[1:]]
-                df = pd.DataFrame(data, columns=headers)
+                df = pd.DataFrame(data, columns=columns)
                 table_dict[table_name] = df
 
         return table_dict
+    
+    def _processTableFromRawHTML2(self, raw_html):
+        base_href = "/guide/code-table5?mcode="
+        table_dict = {}
+        mcodeClass = raw_html.find_all('ul', class_='wrap_tab type_row')
+        
+        table_name = '직무 테이블'
+        columns = ['직무 상위 코드', '직무명']
+        mcode_wrappers = mcodeClass.find_all('li')
+        data = [[mcode_wrapper.a['href'].replace(base_href,""), mcode_wrapper.a.get_text(strip=True)] for mcode_wrapper in mcode_wrappers]
+
+        m_df = pd.DataFrame(data, columns=columns)
+        print(m_df)
+        table_dict[table_name] = m_df
+
+        for row in m_df.iterrows():
+            url = base_href + row['직무 상위 코드']
+            raw_html = getResponsedHtml(url, self.headers, self.num_of_tries, self.cache_folder, self.ignore_cache)
+            _table_dict = self._processTableFromRawHTML1(raw_html)
+            table_dict |= _table_dict
+
+        return table_dict
+
+
+
+    
+    def processTableFromRawHTML(self):
+        _a_code_table = {}
+        keys = self.urls.keys()
+        for key in tqdm(keys, total=len(keys)):
+            if (key!='job_code'):
+                _a_code_table |= self._processTableFromRawHTML1(self.rawHTMLs[key])
+            else:
+                _a_code_table |= self._processTableFromRawHTML2(self.rawHTMLs[key])
+
+        print(_a_code_table)
+
+
 
     
 
@@ -121,8 +171,9 @@ if __name__ == "__main__":
     
     ws = WebScrapperCode(base_url=code_url, headers=headers)
 
-    raw_html = ws.rawHTML['industry_code']
-    table_dict = ws._processTableFromRawHTML(raw_html)
+    ws.processTableFromRawHTML()
+    
+    table_dict = ws._processTableFromRawHTML(ws.rawHTMLs['job_code'])
     print(len(table_dict))
     for key in table_dict.keys():
         print(key)
