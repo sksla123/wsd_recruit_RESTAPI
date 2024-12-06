@@ -1,1 +1,16 @@
+# 유출되신 안되는 정보가 담긴 env 파일
 *.env
+
+# 파이썬 캐쉬(바이트) 파일
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+
+# htmlCache 파일
+__htmlCache__/
