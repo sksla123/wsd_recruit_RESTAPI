@@ -10,6 +10,8 @@ from bs4 import BeautifulSoup
 
 from dataclasses import dataclass, field
 
+import gzip
+
 def getResponsedHtml(url, 
                      headers = {
                             # Robots.txt 방지용
@@ -25,12 +27,12 @@ def getResponsedHtml(url,
     '''
     
     safe_file_name = urllib.parse.quote(url, safe='')
-    cache_file_path = os.path.join(cache_folder, f'{safe_file_name}.txt')
+    cache_file_path = os.path.join(cache_folder, f'{safe_file_name}.txt.gz')
 
     os.makedirs(cache_folder, exist_ok=True)
 
     if (not ignore_cache and os.path.exists(cache_file_path)):
-        with open(cache_file_path, 'r') as f:
+        with gzip.open(cache_file_path, 'rt', encoding='utf-8') as f:
             html = BeautifulSoup(f.read(), 'html.parser')
         # print('cache에서 불러옴')
         return html
@@ -43,8 +45,8 @@ def getResponsedHtml(url,
                 time.sleep(3) # 임시 차단되었을 가능성이 있으므로 3초 쉬고 재시도
                 continue
             html = BeautifulSoup(response.text, 'html.parser')
-            with open(cache_file_path, 'w') as f:
-                print(html, file=f)
+            with gzip.open(cache_file_path, 'wt', encoding='utf-8') as f:
+                f.write(str(html))
                 # print('cache 저장됨')
             return html
     
@@ -333,9 +335,9 @@ class WebScrapper(WebScarpperBase):
     
     def getJobListHTMLFromHTML(self, raw_html):
         job_html_list_html = raw_html.find('div', class_='common_recruilt_list')
-        job_html_list_html = job_html_list_html.find('div', class_='list_body')
         if job_html_list_html is None:
             return None
+        job_html_list_html = job_html_list_html.find('div', class_='list_body')
         return job_html_list_html.find_all('div', class_=lambda x: x and 'list_item' in x.split(), id=lambda y: y and y.startswith('rec-'))
 
     def processJobDataWithLocCode(self, job_html_list, loc_code, max_item_list):    
