@@ -126,7 +126,10 @@ class JobCodeTable():
             'public': '공공·복지',
         }
 
-    
+    def get_total_dataframe(self):
+        dfs = [getattr(self, field) for field in self.toKoreanDict.keys()]  # 각 DataFrame을 리스트로 가져오기
+        total_df = pd.concat(dfs, ignore_index=True)  # 모든 DataFrame을 합침, index는 다시 재설정
+        return total_df    
 
 @dataclass
 class CodeTable():
@@ -331,9 +334,14 @@ class WebScrapper(WebScarpperBase):
     def getJobListHTMLFromHTML(self, raw_html):
         job_html_list_html = raw_html.find('div', class_='common_recruilt_list')
         job_html_list_html = job_html_list_html.find('div', class_='list_body')
+        if job_html_list_html is None:
+            return None
         return job_html_list_html.find_all('div', class_=lambda x: x and 'list_item' in x.split(), id=lambda y: y and y.startswith('rec-'))
 
     def processJobDataWithLocCode(self, job_html_list, loc_code, max_item_list):    
+        if job_html_list is None:
+            return False
+        
         item_cnt = len(job_html_list)
         for item in tqdm(job_html_list, total=item_cnt):
             job_id = item.get("id")
@@ -342,7 +350,7 @@ class WebScrapper(WebScarpperBase):
                 continue
             
             if job_id in self.job_data:
-                self.job_data[job_id]["loc_code"].add(loc_code)
+                self.job_data[job_id].setdefault("loc_code", set()).add(loc_code)
                 continue
             
             self.job_data[job_id] = {
@@ -364,6 +372,40 @@ class WebScrapper(WebScarpperBase):
             return False
         return True
 
+    def processJobDataWithJobCode(self, job_html_list, job_code, max_item_list):    
+        if job_html_list is None:
+            return False
+            
+        item_cnt = len(job_html_list)
+        for item in tqdm(job_html_list, total=item_cnt):
+            job_id = item.get("id")
+            
+            if job_id == None:
+                continue
+            
+            if job_id in self.job_data:
+                self.job_data[job_id].setdefault("job_code", set()).add(job_code)
+                continue
+            
+            self.job_data[job_id] = {
+                "company_name": item.select_one(".col.company_nm .str_tit").get_text(strip=True) if item.select_one(".col.company_nm .str_tit") else None,
+                "company_href": item.select_one(".col.company_nm .str_tit").get("href") if item.select_one(".col.company_nm .str_tit") else None,
+                "main_corp": item.select_one(".col.company_nm .main_corp").get_text(strip=True) if item.select_one(".col.company_nm .main_corp") else None,
+                "job_title": item.select_one(".col.notification_info .job_tit .str_tit").get_text(strip=True) if item.select_one(".col.notification_info .job_tit .str_tit") else None,
+                "job_href": item.select_one(".col.notification_info .job_tit .str_tit").get("href") if item.select_one(".col.notification_info .job_tit .str_tit") else None,
+                "job_sectors": [sector.get_text(strip=True) for sector in item.select(".job_meta .job_sector span")] if item.select(".job_meta .job_sector span") else None,
+                "work_place": item.select_one(".col.recruit_info .work_place").get_text(strip=True) if item.select_one(".col.recruit_info .work_place") else None,
+                "career": item.select_one(".col.recruit_info .career").get_text(strip=True) if item.select_one(".col.recruit_info .career") else None,
+                "education": item.select_one(".col.recruit_info .education").get_text(strip=True) if item.select_one(".col.recruit_info .education") else None,
+                "deadline": item.select_one(".col.support_info .support_detail .date").get_text(strip=True) if item.select_one(".col.support_info .support_detail .date") else None,
+                "registered_days": item.select_one(".col.support_info .support_detail .deadlines").get_text(strip=True) if item.select_one(".col.support_info .support_detail .deadlines") else None,
+                "job_code": set(job_code),
+            }
+        
+        if item_cnt < max_item_list:
+            return False
+        return True
+
     def webScrapAllDomestic(self):
         print("시작")
         # 지역 별 순회
@@ -378,13 +420,32 @@ class WebScrapper(WebScarpperBase):
                 param_dict['page'] = page_cnt
                 param_dict['loc_mcd'] = loc_2_code
                 url = self.addParam2Url(self.urls['domestic_url'], param_dict)
-                print(url)
+                # print(url)
                 raw_html = getResponsedHtml(url, self.headers, self.num_of_tries, self.cache_folder, self.ignore_cache)
                 if not self.processJobDataWithLocCode(self.getJobListHTMLFromHTML(raw_html), loc_2_code, max_list_item):
                     break
                 page_cnt += 1
-                
 
+
+    def webScrapAllJobCategory(self):
+        print("시작")
+        # 지역 별 순회
+        job_code_list = self.code_table.jobCodeTable.get_total_dataframe()['직무 코드'].tolist()
+        max_list_item = 1000
+        
+        for job_code in tqdm(job_code_list, total=len(job_code_list)):
+            param_dict = {}
+            page_cnt = 1
+            param_dict['page_count'] = max_list_item
+            while(True):
+                param_dict['page'] = page_cnt
+                param_dict['cat_kewd='] = job_code
+                url = self.addParam2Url(self.urls['job_category_url'], param_dict)
+                # print(url)
+                raw_html = getResponsedHtml(url, self.headers, self.num_of_tries, self.cache_folder, self.ignore_cache)
+                if not self.processJobDataWithJobCode(self.getJobListHTMLFromHTML(raw_html), job_code, max_list_item):
+                    break
+                page_cnt += 1
         
 
 if __name__ == "__main__":
@@ -402,7 +463,7 @@ if __name__ == "__main__":
     code_table = wsct.getCodeTable()
 
     ws = WebScrapper(code_table, base_url, headers)
-    ws.webScrapAllDomestic()
+    ws.webScrapAllJobCategory()
 
     # table_dict = ws._processTableFromRawHTML(ws.rawHTMLs['job_code'])
     # print(len(table_dict))
