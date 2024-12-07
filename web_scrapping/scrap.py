@@ -1,6 +1,5 @@
 import os
 import time
-import itertools
 import urllib.parse
 import pandas as pd
 
@@ -37,8 +36,9 @@ def getResponsedHtml(url,
         return html
     else:
         while(num_of_tries != 0):
-            response = requests.get(url, headers=headers)
+            response = requests.get(url, headers=headers, timeout=20)
             if(response.status_code != 200):
+                print(response.status_code, "failed")
                 num_of_tries -= 1
                 time.sleep(3) # 임시 차단되었을 가능성이 있으므로 3초 쉬고 재시도
                 continue
@@ -310,7 +310,7 @@ class WebScrapperCodeTable(WebScarpperBase):
             return None
 
 
-class WebScrapper():
+class WebScrapper(WebScarpperBase):
     def  __init__(self, code_table:CodeTable, base_url, headers, num_of_tries=5, cache_folder='./__htmlCache__'):
         '''
         code_table: CodeTable
@@ -333,43 +333,57 @@ class WebScrapper():
         job_html_list_html = job_html_list_html.find('div', class_='list_body')
         return job_html_list_html.find_all('div', class_=lambda x: x and 'list_item' in x.split(), id=lambda y: y and y.startswith('rec-'))
 
-    def processJobDataWithLocCode(self, job_html_list, loc_code):
-        for item in job_html_list:
+    def processJobDataWithLocCode(self, job_html_list, loc_code, max_item_list):    
+        item_cnt = len(job_html_list)
+        for item in tqdm(job_html_list, total=item_cnt):
             job_id = item.get("id")
+            
+            if job_id == None:
+                continue
             
             if job_id in self.job_data:
                 self.job_data[job_id]["loc_code"].add(loc_code)
                 continue
             
             self.job_data[job_id] = {
-                "company_name": item.select_one(".col.company_nm .str_tit").get_text(strip=True),
-                "company_href": item.select_one(".col.company_nm .str_tit").get("href"),
-                "main_corp": item.select_one(".col.company_nm .main_corp").get_text(strip=True),
-                "job_title": item.select_one(".col.notification_info .job_tit .str_tit").get_text(strip=True),
-                "job_href": item.select_one(".col.notification_info .job_tit .str_tit").get("href"),
-                "job_sectors": [sector.get_text(strip=True) for sector in item.select(".job_meta .job_sector span")],
-                "work_place": item.select_one(".col.recruit_info .work_place").get_text(strip=True),
-                "career": item.select_one(".col.recruit_info .career").get_text(strip=True),
-                "education": item.select_one(".col.recruit_info .education").get_text(strip=True),
-                "deadline": item.select_one(".col.support_info .support_detail .date").get_text(strip=True),
-                "registered_days": item.select_one(".col.support_info .support_detail .deadlines").get_text(strip=True),
+                "company_name": item.select_one(".col.company_nm .str_tit").get_text(strip=True) if item.select_one(".col.company_nm .str_tit") else None,
+                "company_href": item.select_one(".col.company_nm .str_tit").get("href") if item.select_one(".col.company_nm .str_tit") else None,
+                "main_corp": item.select_one(".col.company_nm .main_corp").get_text(strip=True) if item.select_one(".col.company_nm .main_corp") else None,
+                "job_title": item.select_one(".col.notification_info .job_tit .str_tit").get_text(strip=True) if item.select_one(".col.notification_info .job_tit .str_tit") else None,
+                "job_href": item.select_one(".col.notification_info .job_tit .str_tit").get("href") if item.select_one(".col.notification_info .job_tit .str_tit") else None,
+                "job_sectors": [sector.get_text(strip=True) for sector in item.select(".job_meta .job_sector span")] if item.select(".job_meta .job_sector span") else None,
+                "work_place": item.select_one(".col.recruit_info .work_place").get_text(strip=True) if item.select_one(".col.recruit_info .work_place") else None,
+                "career": item.select_one(".col.recruit_info .career").get_text(strip=True) if item.select_one(".col.recruit_info .career") else None,
+                "education": item.select_one(".col.recruit_info .education").get_text(strip=True) if item.select_one(".col.recruit_info .education") else None,
+                "deadline": item.select_one(".col.support_info .support_detail .date").get_text(strip=True) if item.select_one(".col.support_info .support_detail .date") else None,
+                "registered_days": item.select_one(".col.support_info .support_detail .deadlines").get_text(strip=True) if item.select_one(".col.support_info .support_detail .deadlines") else None,
                 "loc_code": set(loc_code),
             }
-
-    def webScrabAllDomestic(self):
-        # 지역 별 순회
-        loc_2_list = self.code_table.loc_1['2차 지역코드']
-        max_list_item = 10000
         
-        for loc_2_code in loc_2_list:
+        if item_cnt < max_item_list:
+            return False
+        return True
+
+    def webScrapAllDomestic(self):
+        print("시작")
+        # 지역 별 순회
+        loc_2_list = self.code_table.total_loc['2차 지역코드'].tolist()
+        max_list_item = 1000
+        
+        for loc_2_code in tqdm(loc_2_list, total=len(loc_2_list)):
             param_dict = {}
             page_cnt = 1
             param_dict['page_count'] = max_list_item
             while(True):
                 param_dict['page'] = page_cnt
+                param_dict['loc_mcd'] = loc_2_code
                 url = self.addParam2Url(self.urls['domestic_url'], param_dict)
+                print(url)
                 raw_html = getResponsedHtml(url, self.headers, self.num_of_tries, self.cache_folder, self.ignore_cache)
-                self.processJobDataWithLocCode(self.getJobListHTMLFromHTML(raw_html))
+                if not self.processJobDataWithLocCode(self.getJobListHTMLFromHTML(raw_html), loc_2_code, max_list_item):
+                    break
+                page_cnt += 1
+                
 
         
 
@@ -388,7 +402,7 @@ if __name__ == "__main__":
     code_table = wsct.getCodeTable()
 
     ws = WebScrapper(code_table, base_url, headers)
-    ws.webScrabAllDomestic()
+    ws.webScrapAllDomestic()
 
     # table_dict = ws._processTableFromRawHTML(ws.rawHTMLs['job_code'])
     # print(len(table_dict))
