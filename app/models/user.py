@@ -1,12 +1,19 @@
-from app import db
+from sqlalchemy import Column, Integer, String, Boolean, DateTime
+from sqlalchemy.orm import relationship
+from app.models import Base
 from datetime import datetime
 
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password = db.Column(db.String(255), nullable=False)
-    user_authority = db.Column(db.String(50), nullable=False)
-    created_date = db.Column(db.DateTime, default=datetime.utcnow)
-    last_updated_date = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    user_bookmark = db.Column(db.Text)
-    user_applicated = db.Column(db.Text)
+class User(Base):
+    __tablename__ = 'users'
+    
+    user_id = Column(Integer, primary_key=True, autoincrement=True)
+    user_email = Column(String(255), unique=True, nullable=False)
+    user_password = Column(String(255), nullable=False)
+    user_authority = Column(String(50), default='user')
+    is_active = Column(Boolean, default=True)
+    created_date = Column(DateTime, default=datetime.utcnow)
+    last_updated_date = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_login_date = Column(DateTime, nullable=True)
+
+    logins = relationship('Login', back_populates='user')
+    login_logs = relationship('LoginLog', back_populates='user')

@@ -4,20 +4,24 @@ import os
 load_dotenv()
 
 class Config:
-    SQLALCHEMY_DATABASE_URI = f"mysql://{os.getenv('MySQL_DB_USER')}:{os.getenv('MySQL_DB_PASSWORD')}@{os.getenv('MySQL_DB_URL')}:{os.getenv('MySQL_DB_PORT')}/your_database_name"
+   # Database Configuration
+    MYSQL_DB_URL = os.getenv('MYSQL_DB_URL')
+    MYSQL_DB_PORT = os.getenv('MYSQL_DB_PORT')
+    MYSQL_DB_USER = os.getenv('MYSQL_DB_USER')
+    MYSQL_DB_PASSWORD = os.getenv('MYSQL_DB_PASSWORD')
+
+    # SQLAlchemy Configuration
+    SQLALCHEMY_DATABASE_URI = f'mysql+pymysql://{MYSQL_DB_USER}:{MYSQL_DB_PASSWORD}@{MYSQL_DB_URL}:{MYSQL_DB_PORT}/your_database'
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    # 기존 코드 + JWT 관련 설정
     JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
-    JWT_ACCESS_TOKEN_EXPIRES = 3600 # 1시간
-    JWT_REFRESH_TOKEN_EXPIRES = 2592000 # 30일
+    JWT_ACCESS_TOKEN_EXPIRES = int(os.getenv('JWT_ACCESS_TOKEN_EXPIRES', 15))  # 분 단위
+    JWT_REFRESH_TOKEN_EXPIRES = int(os.getenv('JWT_REFRESH_TOKEN_EXPIRES', 7*24*60))  # 분 단위
 
-    MySQL_DB_URL = os.getenv('MySQL_DB_URL')
-    MySQL_DB_PORT = os.getenv('MySQL_DB_PORT')
-    MySQL_DB_USER = os.getenv('MySQL_DB_USER')
-    MySQL_DB_PASSWORD = os.getenv('MySQL_DB_PASSWORD')
-
-    REDIS_DB_URL = os.getenv('REDIS_DB_URL')
-    REDIS_DB_PORT = os.getenv('REDIS_DB_PORT')
-    REDIS_DB_PASSWORD = os.getenv('REDIS_DB_PASSWORD')
+    # 로깅 및 보안 설정
+    MAX_LOGIN_ATTEMPTS = int(os.getenv('MAX_LOGIN_ATTEMPTS', 5))
+    LOGIN_ATTEMPT_WINDOW = int(os.getenv('LOGIN_ATTEMPT_WINDOW', 30))  # 분 단위
 
     @classmethod
     def get_db_config(cls):

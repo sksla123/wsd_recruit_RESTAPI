@@ -2,16 +2,18 @@ from flask import Blueprint
 from app.controllers.auth_controller import AuthController
 from flasgger import swag_from
 
-auth_bp = Blueprint('auth', __name__)
+auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+auth_controller = AuthController()
 
 @auth_bp.route('/register', methods=['POST'])
 @swag_from({
     'tags': ['Authentication'],
-    'description': 'Register a new user',
+    'description': '회원가입',
     'parameters': [
         {
             'name': 'body',
             'in': 'body',
+            'required': True,
             'schema': {
                 'type': 'object',
                 'properties': {
@@ -22,25 +24,23 @@ auth_bp = Blueprint('auth', __name__)
         }
     ],
     'responses': {
-        201: {
-            'description': 'User registered successfully'
-        },
-        400: {
-            'description': 'Bad request'
-        }
+        '201': {'description': '회원가입 성공'},
+        '400': {'description': '잘못된 입력'},
+        '409': {'description': '이미 존재하는 사용자'}
     }
 })
 def register():
-    return AuthController.register()
+    return auth_controller.register()
 
 @auth_bp.route('/login', methods=['POST'])
 @swag_from({
     'tags': ['Authentication'],
-    'description': 'Login user',
+    'description': '로그인',
     'parameters': [
         {
             'name': 'body',
             'in': 'body',
+            'required': True,
             'schema': {
                 'type': 'object',
                 'properties': {
@@ -51,77 +51,9 @@ def register():
         }
     ],
     'responses': {
-        200: {
-            'description': 'Login successful'
-        },
-        401: {
-            'description': 'Invalid credentials'
-        }
+        '200': {'description': '로그인 성공'},
+        '401': {'description': '인증 실패'}
     }
 })
 def login():
-    return AuthController.login()
-
-@auth_bp.route('/refresh', methods=['POST'])
-@swag_from({
-    'tags': ['Authentication'],
-    'description': 'Refresh access token',
-    'parameters': [
-        {
-            'name': 'Authorization',
-            'in': 'header',
-            'type': 'string',
-            'required': True,
-            'description': 'Refresh token'
-        }
-    ],
-    'responses': {
-        200: {
-            'description': 'New access token'
-        },
-        401: {
-            'description': 'Invalid refresh token'
-        }
-    }
-})
-def refresh():
-    return AuthController.refresh()
-
-@auth_bp.route('/profile', methods=['PUT'])
-@swag_from({
-    'tags': ['Authentication'],
-    'description': 'Update user profile',
-    'parameters': [
-        {
-            'name': 'Authorization',
-            'in': 'header',
-            'type': 'string',
-            'required': True,
-            'description': 'Access token'
-        },
-        {
-            'name': 'body',
-            'in': 'body',
-            'schema': {
-                'type': 'object',
-                'properties': {
-                    'email': {'type': 'string'},
-                    'password': {'type': 'string'}
-                }
-            }
-        }
-    ],
-    'responses': {
-        200: {
-            'description': 'Profile updated successfully'
-        },
-        400: {
-            'description': 'Bad request'
-        },
-        401: {
-            'description': 'Unauthorized'
-        }
-    }
-})
-def update_profile():
-    return AuthController.update_profile()
+    return auth_controller.login()

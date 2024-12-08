@@ -1,41 +1,45 @@
-from flask import jsonify, request
+from flask import request, jsonify
 from app.services.auth_service import AuthService
-from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
+from app.utils.validator import Validator
 
 class AuthController:
-    @staticmethod
-    def register():
-        data = request.get_json()
-        try:
-            user = AuthService.register_user(data['email'], data['password'])
-            return jsonify({"message": "User registered successfully"}), 201
-        except ValueError as e:
-            return jsonify({"error": str(e)}), 400
+    def __init__(self):
+        self.auth_service = AuthService()
 
-    @staticmethod
-    def login():
+    def register(self):
         data = request.get_json()
-        user = AuthService.login_user(data['email'], data['password'])
+        email = data.get('email')
+        password = data.get('password')
+
+        # 이메일 및 비밀번호 검증
+        if not Validator.validate_email(email):
+            return jsonify({"error": "Invalid email format"}), 400
+        
+        if not Validator.validate_password(password):
+            return jsonify({"error": "Invalid password format"}), 400
+
+        user = self.auth_service.register(email, password)
+        
         if user:
-            access_token = create_access_token(identity=user.id)
-            refresh_token = create_refresh_token(identity=user.id)
-            return jsonify(access_token=access_token, refresh_token=refresh_token), 200
-        return jsonify({"error": "Invalid credentials"}), 401
+            return jsonify({"message": "User registered successfully"}), 201
+        else:
+            return jsonify({"error": "User already exists"}), 409
 
-    @staticmethod
-    @jwt_required(refresh=True)
-    def refresh():
-        identity = get_jwt_identity()
-        access_token = create_access_token(identity=identity)
-        return jsonify(access_token=access_token), 200
-
-    @staticmethod
-    @jwt_required()
-    def update_profile():
-        user_id = get_jwt_identity()
+    def login(self):
         data = request.get_json()
-        try:
-            user = AuthService.update_user_profile(user_id, data)
-            return jsonify({"message": "Profile updated successfully"}), 200
-        except ValueError as e:
-            return jsonify({"error": str(e)}), 400
+        email = data.get('email')
+        password = data.get('password')
+        ip_address = request.remote_addr
+        device_info = request.user_agent.string
+
+        access_token, refresh_token = self.auth_service.login(
+            email, password, ip_address, device_info
+        )
+
+        if access_token and refresh_token:
+            return jsonify({
+                "access_token": access_token,
+                "refresh_token": refresh_token
+            }), 200
+        else:
+            return jsonify({"error": "Invalid credentials"}), 401

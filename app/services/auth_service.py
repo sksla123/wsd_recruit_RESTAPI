@@ -1,39 +1,63 @@
-from app import db
+import bcrypt
 from app.models.user import User
-from werkzeug.security import generate_password_hash, check_password_hash
-import re
+from app.models.login import Login, LoginLog
+from app import db
+from app.utils.token_manager import TokenManager
+from sqlalchemy.exc import IntegrityError
 
 class AuthService:
-    @staticmethod
-    def register_user(email, password):
-        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-            raise ValueError("Invalid email format")
+    def register(self, email, password):
+        # 비밀번호 해싱
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
         
-        if User.query.filter_by(email=email).first():
-            raise ValueError("Email already registered")
-        
-        hashed_password = generate_password_hash(password)
-        new_user = User(email=email, password=hashed_password, user_authority='user')
-        db.session.add(new_user)
-        db.session.commit()
-        return new_user
+        try:
+            new_user = User(
+                user_email=email,
+                user_password=hashed_password.decode('utf-8')
+            )
+            db.session.add(new_user)
+            db.session.commit()
+            return new_user
+        except IntegrityError:
+            db.session.rollback()
+            return None
 
-    @staticmethod
-    def login_user(email, password):
-        user = User.query.filter_by(email=email).first()
-        if user and check_password_hash(user.password, password):
-            return user
-        return None
-
-    @staticmethod
-    def update_user_profile(user_id, data):
-        user = User.query.get(user_id)
-        if not user:
-            raise ValueError("User not found")
+    def login(self, email, password, ip_address, device_info):
+        user = User.query.filter_by(user_email=email).first()
         
-        for key, value in data.items():
-            if hasattr(user, key):
-                setattr(user, key, value)
+        if user and bcrypt.checkpw(password.encode('utf-8'), user.user_password.encode('utf-8')):
+            # 액세스 및 리프레시 토큰 생성
+            access_token = TokenManager.generate_access_token(user.user_id)
+            refresh_token = TokenManager.generate_refresh_token(user.user_id)
+            
+            # 로그인 기록
+            login_record = Login(
+                refresh_token=refresh_token,
+                user_id=user.user_id,
+                device_info=device_info
+            )
+            
+            login_log = LoginLog(
+                user_id=user.user_id,
+                login_ip=ip_address,
+                device_info=device_info,
+                status='success'
+            )
+            
+            db.session.add(login_record)
+            db.session.add(login_log)
+            db.session.commit()
+            
+            return access_token, refresh_token
         
+        # 로그인 실패 기록
+        failed_log = LoginLog(
+            user_id=user.user_id if user else None,
+            login_ip=ip_address,
+            device_info=device_info,
+            status='failed'
+        )
+        db.session.add(failed_log)
         db.session.commit()
-        return user
+        
+        return None, None
