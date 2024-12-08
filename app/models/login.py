@@ -1,15 +1,13 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey
-from sqlalchemy.orm import relationship
-from datetime import datetime
-from .user import Base
+from app import db
+from datetime import datetime, timedelta
 
-class Login(Base):
-    __tablename__ = 'logins'
-    
-    refresh_token = Column(String(255), primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.user_id'))
-    device_info = Column(String(255))
-    created_date = Column(DateTime, default=datetime.utcnow)
-    expired_date = Column(DateTime)
+class Login(db.Model):
+    __tablename__ = 'Login'
+    refresh_token = db.Column(db.String(255), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('User.user_id'), nullable=False)
+    device_info = db.Column(db.String(255))
+    created_date = db.Column(db.DateTime, default=datetime.utcnow)
+    expired_date = db.Column(db.DateTime, default=datetime.utcnow() + timedelta(days=365))  # Example: expires in 1 year
 
-    user = relationship("User")
+    def __repr__(self):
+        return f'<Login {self.refresh_token}>'

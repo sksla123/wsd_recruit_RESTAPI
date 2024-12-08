@@ -1,12 +1,13 @@
-from sqlalchemy import Column, Integer, String, DateTime
+from app import db
 from datetime import datetime
-from .user import Base
 
-class LoginLog(Base):
-    __tablename__ = 'login_logs'
-    
-    login_id = Column(Integer, primary_key=True, autoincrement=True)
-    login_date = Column(DateTime, default=datetime.utcnow)
-    login_ip = Column(String(50))
-    device_info = Column(String(255))
-    status = Column(String(20))  # 'success' or 'failed'
+class LoginLog(db.Model):
+    __tablename__ = 'LoginLog'
+    login_date = db.Column(db.DateTime, default=datetime.utcnow, primary_key=True)
+    login_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    login_ip = db.Column(db.String(255))
+    device_info = db.Column(db.String(255))
+    status = db.Column(db.String(255))  # 'success' or 'failed'
+
+    def __repr__(self):
+        return f'<LoginLog {self.login_id}>'

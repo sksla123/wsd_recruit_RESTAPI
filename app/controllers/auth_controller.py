@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from app.services.auth_service import AuthService
-from app.utils.validators import validate_email_format, validate_password_strength
+from app.utils.auth_util import validate_email_format, validate_password_strength
 from sqlalchemy.orm import Session
 
 auth_bp = Blueprint('auth', __name__)
