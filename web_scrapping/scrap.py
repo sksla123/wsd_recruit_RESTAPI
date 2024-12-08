@@ -1,7 +1,11 @@
+import re
 import os
 import time
 import urllib.parse
 import pandas as pd
+
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from tqdm.auto import tqdm
 
@@ -11,6 +15,9 @@ from bs4 import BeautifulSoup
 from dataclasses import dataclass, field
 
 import gzip
+
+def now_korea():
+    return datetime.now(ZoneInfo("Asia/Seoul"))
 
 def getResponsedHtml(url, 
                      headers = {
@@ -340,6 +347,79 @@ class WebScrapper(WebScarpperBase):
         job_html_list_html = job_html_list_html.find('div', class_='list_body')
         return job_html_list_html.find_all('div', class_=lambda x: x and 'list_item' in x.split(), id=lambda y: y and y.startswith('rec-'))
 
+    def __getNowKoreaTime(self):
+        korea_time = datetime.now(ZoneInfo("Asia/Seoul"))
+        return korea_time
+        
+    def __getDefaultTime(self):
+        unix_epoch = datetime(1970, 1, 1, tzinfo=ZoneInfo("UTC"))
+        korea_time = unix_epoch.astimezone(ZoneInfo("Asia/Seoul"))
+        
+        return korea_time.strftime("%Y-%m-%d")
+
+    def _preprocessDeadline(self, date_str):
+        if None:
+            return self.__getDefaultTime()
+
+        cur_korea_time = self.__getNowKoreaTime()
+
+        if re.match(r'\(\d+\)시 마감', date_str):
+            return cur_korea_time.strftime("%Y-%m-%d")
+
+        # 2. D-(숫자)
+        d_match = re.match(r'D-(-?\d+)', date_str)
+        if d_match:
+            days_offset = int(d_match.group(1))  # 추출된 숫자
+            deadline_date = cur_korea_time + timedelta(days=days_offset)
+            return deadline_date.strftime("%Y-%m-%d")
+    
+        # 3. 오늘마감
+        if date_str == "오늘마감":
+            return cur_korea_time.strftime("%Y-%m-%d")
+    
+        # 4. 내일마감
+        if date_str == "내일마감":
+            deadline_date = cur_korea_time + timedelta(days=1)
+            return deadline_date.strftime("%Y-%m-%d")
+
+        mm_dd_match = re.match(r'~(\d{2})\.(\d{2})\(\w\)', date_str)
+
+        current_year = cur_korea_time.year
+        if mm_dd_match:
+            month = int(mm_dd_match.group(1))
+            day = int(mm_dd_match.group(2))
+            deadline_date = datetime(current_year, month, day, tzinfo=ZoneInfo("Asia/Seoul"))
+            
+            # 현재 날짜보다 과거라면 내년으로 설정
+            if deadline_date < cur_korea_time:
+                deadline_date = datetime(current_year + 1, month, day, tzinfo=ZoneInfo("Asia/Seoul"))
+            
+            return deadline_date.strftime("%Y-%m-%d")
+
+    def _preprocessUpdateDate(self, date_str):
+        if None:
+            return self.__getDefaultTime()
+
+        cur_korea_time = self.__getNowKoreaTime()
+        
+        match1 = re.search(r'(\d+)일 전 등록', date_str)
+        match2 = re.search(r'(\d+)일 전 수정', date_str)
+        if not match1 and not match2:
+            return cur_korea_time.strftime("%Y-%m-%d")
+
+        if match1:
+            days_ago = int(match1.group(1))
+        if match2:
+            days_ago = int(match2.group(1))
+        else:
+            return self.__getDefaultTime()
+        
+        c_date = cur_korea_time - timedelta(days=days_ago)
+        
+        return c_date.strftime("%Y-%m-%d")
+        
+            
+    
     def _processItemData(self, item):
         return {
                 "company_name": item.select_one(".col.company_nm .str_tit").get_text(strip=True) if item.select_one(".col.company_nm .str_tit") else None,
@@ -351,8 +431,8 @@ class WebScrapper(WebScarpperBase):
                 "work_place": item.select_one(".col.recruit_info .work_place").get_text(strip=True) if item.select_one(".col.recruit_info .work_place") else None,
                 "career": item.select_one(".col.recruit_info .career").get_text(strip=True) if item.select_one(".col.recruit_info .career") else None,
                 "education": item.select_one(".col.recruit_info .education").get_text(strip=True) if item.select_one(".col.recruit_info .education") else None,
-                "deadline": item.select_one(".col.support_info .support_detail .date").get_text(strip=True) if item.select_one(".col.support_info .support_detail .date") else None,
-                "registered_days": item.select_one(".col.support_info .support_detail .deadlines").get_text(strip=True) if item.select_one(".col.support_info .support_detail .deadlines") else None,
+                "deadline": self._preprocessDeadline(item.select_one(".col.support_info .support_detail .date").get_text(strip=True) if item.select_one(".col.support_info .support_detail .date") else None),
+                "registered_days": self._preprocessUpdateDate(item.select_one(".col.support_info .support_detail .deadlines").get_text(strip=True) if item.select_one(".col.support_info .support_detail .deadlines") else None),
                 "loc_code": set(),
                 "job_code": set(),
                 "sal_code": 100,
@@ -381,7 +461,7 @@ class WebScrapper(WebScarpperBase):
             return False
         return True
 
-    def processJobDataWithJobCode(self, job_html_list, job_code, max_item_list):    
+    def processJobDataWithJobCode(self, job_html_list, job_code, max_item_list, sal_code=None):    
         if job_html_list is None:
             return False
             
@@ -396,6 +476,9 @@ class WebScrapper(WebScarpperBase):
                 self.job_data[job_id] = self._processItemData(item)
             
             self.job_data[job_id]['job_code'].add(job_code)
+
+            if sal_code is not None:
+                self.job_data[job_id]["sal_code"] = sal_code
 
         if item_cnt < max_item_list:
             return False
@@ -467,8 +550,6 @@ class WebScrapper(WebScarpperBase):
                     if not self.processJobDataWithJobCode(self.getJobListHTMLFromHTML(raw_html), job_code, max_list_item, sal_code):
                         break
                     page_cnt += 1
-            
-
 
 if __name__ == "__main__":
     code_url = "https://oapi.saramin.co.kr"
