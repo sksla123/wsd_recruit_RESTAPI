@@ -4,6 +4,12 @@ import os
 load_dotenv()
 
 class Config:
+    SQLALCHEMY_DATABASE_URI = f"mysql://{os.getenv('MySQL_DB_USER')}:{os.getenv('MySQL_DB_PASSWORD')}@{os.getenv('MySQL_DB_URL')}:{os.getenv('MySQL_DB_PORT')}/your_database_name"
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    JWT_SECRET_KEY = os.getenv('JWT_SECRET_KEY')
+    JWT_ACCESS_TOKEN_EXPIRES = 3600 # 1시간
+    JWT_REFRESH_TOKEN_EXPIRES = 2592000 # 30일
+
     MySQL_DB_URL = os.getenv('MySQL_DB_URL')
     MySQL_DB_PORT = os.getenv('MySQL_DB_PORT')
     MySQL_DB_USER = os.getenv('MySQL_DB_USER')

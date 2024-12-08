@@ -1,22 +1,24 @@
 from flask import Flask
-from flask_injector import FlaskInjector
-from injector import singleton
+from flask_sqlalchemy import SQLAlchemy
+from flask_migrate import Migrate
+from flask_jwt_extended import JWTManager
+from flasgger import Swagger
 
-from .config import Config
-from .main import main as main_blueprint
-from .auth import auth as auth_blueprint
+db = SQLAlchemy()
+migrate = Migrate()
+jwt = JWTManager()
+swagger = Swagger()
 
-# blueprint 등록
 def create_app():
     app = Flask(__name__)
+    app.config.from_object('config.Config')
 
-    app.register_blueprint(main_blueprint)
-    app.register_blueprint(test_blueprint)
-    app.register_blueprint(auth_blueprint)
+    db.init_app(app)
+    migrate.init_app(app, db)
+    jwt.init_app(app)
+    swagger.init_app(app)
 
-    def configure(binder):
-        binder.bind(DataService, to=DataService, scope=singleton)
-    
-    FlaskInjector(app=app, modules=[configure])
+    from app.controllers.auth_controller import auth
+    app.register_blueprint(auth, url_prefix='/auth')
 
     return app
