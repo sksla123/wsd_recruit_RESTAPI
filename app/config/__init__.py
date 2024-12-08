@@ -11,7 +11,6 @@ class Config:
 
     REDIS_DB_URL = os.getenv('REDIS_DB_URL')
     REDIS_DB_PORT = os.getenv('REDIS_DB_PORT')
-    REDIS_DB_USER = os.getenv('REDIS_DB_USER')
     REDIS_DB_PASSWORD = os.getenv('REDIS_DB_PASSWORD')
 
     @classmethod
@@ -26,7 +25,7 @@ class Config:
             'Redis': {
                 'url': cls.REDIS_DB_URL,
                 'port': cls.REDIS_DB_PORT,
-                'user': cls.REDIS_DB_USER,
                 'passord': cls.REDIS_DB_PASSWORD
-            }
+            },
+            
         }
