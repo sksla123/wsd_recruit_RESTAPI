@@ -1,4 +1,4 @@
-from app import db
+from app.models.user import db
 from datetime import datetime
 
 class LoginLog(db.Model):

@@ -128,7 +128,7 @@ def update_user_profile(data):
         return responses.success_response(200, 'Profile updated successfully')
 
     except Exception as e:
-        print(f"Error updating user profile: {e}")
+        print(f"Error updating user profile: {e}")  # 닫는 괄호 추가
         return responses.error_response(500, 'Failed to update profile')
 
 
