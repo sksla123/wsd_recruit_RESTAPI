@@ -1,29 +1,30 @@
-from flask import request, jsonify
+from flask import Blueprint, request, jsonify
 from app.services.auth_service import AuthService
-from app.utils.validator import Validator
+from app.utils.validators import validate_email_format, validate_password_strength
+from sqlalchemy.orm import Session
+
+auth_bp = Blueprint('auth', __name__)
 
 class AuthController:
-    def __init__(self):
-        self.auth_service = AuthService()
+    def __init__(self, db_session: Session):
+        self.auth_service = AuthService(db_session)
 
     def register(self):
         data = request.get_json()
         email = data.get('email')
         password = data.get('password')
 
-        # 이메일 및 비밀번호 검증
-        if not Validator.validate_email(email):
+        if not validate_email_format(email):
             return jsonify({"error": "Invalid email format"}), 400
         
-        if not Validator.validate_password(password):
-            return jsonify({"error": "Invalid password format"}), 400
+        if not validate_password_strength(password):
+            return jsonify({"error": "Weak password"}), 400
 
-        user = self.auth_service.register(email, password)
-        
-        if user:
+        try:
+            user = self.auth_service.register_user(email, password)
             return jsonify({"message": "User registered successfully"}), 201
-        else:
-            return jsonify({"error": "User already exists"}), 409
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
 
     def login(self):
         data = request.get_json()
@@ -32,7 +33,7 @@ class AuthController:
         ip_address = request.remote_addr
         device_info = request.user_agent.string
 
-        access_token, refresh_token = self.auth_service.login(
+        access_token, refresh_token = self.auth_service.login_user(
             email, password, ip_address, device_info
         )
 
