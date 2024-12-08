@@ -355,10 +355,10 @@ class WebScrapper(WebScarpperBase):
                 "registered_days": item.select_one(".col.support_info .support_detail .deadlines").get_text(strip=True) if item.select_one(".col.support_info .support_detail .deadlines") else None,
                 "loc_code": set(),
                 "job_code": set(),
-                "sal_code": int,
+                "sal_code": 100,
             }
     
-    def processJobDataWithLocCode(self, job_html_list, loc_code, max_item_list):    
+    def processJobDataWithLocCode(self, job_html_list, loc_code, max_item_list, sal_code=None):    
         if job_html_list is None:
             return False
         
@@ -373,6 +373,9 @@ class WebScrapper(WebScarpperBase):
                 self.job_data[job_id] = self._processItemData(item)
             
             self.job_data[job_id]["loc_code"].add(loc_code)
+
+            if sal_code is not None:
+                self.job_data[job_id]["sal_code"] = sal_code
         
         if item_cnt < max_item_list:
             return False
@@ -438,6 +441,33 @@ class WebScrapper(WebScarpperBase):
                 if not self.processJobDataWithJobCode(self.getJobListHTMLFromHTML(raw_html), job_code, max_list_item):
                     break
                 page_cnt += 1
+
+    def webScrapAllJobCategoryWithSalData(self):
+        print("시작")
+        # 지역 별 순회
+        job_code_list = self.code_table.jobCodeTable.get_total_dataframe()['직무 코드'].tolist()
+        max_list_item = 1000
+        for job_code in tqdm(job_code_list, total=len(job_code_list)):
+            for sal_code in range(17):
+                param_dict = {}
+                if sal_code == 0:
+                    param_dict['sal_cd'] = 0
+                elif sal_code == 1:
+                    param_dict['sal_cd'] = 99
+                else:
+                    param_dict['sal_min'] = sal_code + 6
+                page_cnt = 1
+                param_dict['page_count'] = max_list_item
+                while(True):
+                    param_dict['page'] = page_cnt
+                    param_dict['cat_kewd='] = job_code
+                    url = self.addParam2Url(self.urls['job_category_url'], param_dict)
+                    # print(url)
+                    raw_html = getResponsedHtml(url, self.headers, self.num_of_tries, self.cache_folder, self.ignore_cache)
+                    if not self.processJobDataWithJobCode(self.getJobListHTMLFromHTML(raw_html), job_code, max_list_item, sal_code):
+                        break
+                    page_cnt += 1
+            
 
 
 if __name__ == "__main__":
