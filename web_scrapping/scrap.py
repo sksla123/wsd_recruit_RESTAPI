@@ -418,10 +418,33 @@ class WebScrapper(WebScarpperBase):
         
         return c_date.strftime("%Y-%m-%d")
         
+    def __removeUpperArrow(self, input_string):
+        if '↑' in input_string:
+            input_string = input_string.replace('↑', '')
+            return 1, input_string
+        return 0, input_string
+
+    def _preprocess(self, input_string):
+        # 입력 예시: ['고졸', '대학(2,3년)', '대학교(4년)', '석사', '박사', '학력무관']
+        flag, input_string = self.__removeUpperArrow(input_string)
+        
+        if '고졸' in input_string:
+            edu_code = 1  # 고졸
+        elif '대학(2,3년)' in input_string:
+            edu_code = 2  # 대학(2,3년)
+        elif '대학교(4년)' in input_string:
+            edu_code = 3  # 대학교(4년)
+        elif '석사' in input_string:
+            edu_code = 4  # 석사
+        elif '박사' in input_string:
+            edu_code = 5  # 박사
+        else:
+            edu_code = 0  # 기본값은 학력무관
             
-    
+        return flag, edu_code
+        
     def _processItemData(self, item):
-        return {
+        data = {
                 "company_name": item.select_one(".col.company_nm .str_tit").get_text(strip=True) if item.select_one(".col.company_nm .str_tit") else None,
                 "company_href": item.select_one(".col.company_nm .str_tit").get("href") if item.select_one(".col.company_nm .str_tit") else None,
                 "main_corp": item.select_one(".col.company_nm .main_corp").get_text(strip=True) if item.select_one(".col.company_nm .main_corp") else None,
@@ -431,12 +454,20 @@ class WebScrapper(WebScarpperBase):
                 "work_place": item.select_one(".col.recruit_info .work_place").get_text(strip=True) if item.select_one(".col.recruit_info .work_place") else None,
                 "career": item.select_one(".col.recruit_info .career").get_text(strip=True) if item.select_one(".col.recruit_info .career") else None,
                 "education": item.select_one(".col.recruit_info .education").get_text(strip=True) if item.select_one(".col.recruit_info .education") else None,
+                "edu_code": 0,
+                "edu_upper": 0,
                 "deadline": self._preprocessDeadline(item.select_one(".col.support_info .support_detail .date").get_text(strip=True) if item.select_one(".col.support_info .support_detail .date") else None),
                 "registered_days": self._preprocessUpdateDate(item.select_one(".col.support_info .support_detail .deadlines").get_text(strip=True) if item.select_one(".col.support_info .support_detail .deadlines") else None),
                 "loc_code": set(),
                 "job_code": set(),
                 "sal_code": 100,
             }
+
+        flag, edu_code = self._preprocess(data['education'])
+        data['edu_code'] = edu_code
+        data['edu_upper'] = flag
+        
+        return data
     
     def processJobDataWithLocCode(self, job_html_list, loc_code, max_item_list, sal_code=None):    
         if job_html_list is None:
@@ -496,7 +527,7 @@ class WebScrapper(WebScarpperBase):
             param_dict['page_count'] = max_list_item
             while(True):
                 param_dict['page'] = page_cnt
-                param_dict['loc_mcd'] = loc_2_code
+                param_dict['loc_cd'] = loc_2_code
                 url = self.addParam2Url(self.urls['domestic_url'], param_dict)
                 # print(url)
                 raw_html = getResponsedHtml(url, self.headers, self.num_of_tries, self.cache_folder, self.ignore_cache)
@@ -550,6 +581,7 @@ class WebScrapper(WebScarpperBase):
                     if not self.processJobDataWithJobCode(self.getJobListHTMLFromHTML(raw_html), job_code, max_list_item, sal_code):
                         break
                     page_cnt += 1
+            
 
 if __name__ == "__main__":
     code_url = "https://oapi.saramin.co.kr"
