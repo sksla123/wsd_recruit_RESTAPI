@@ -340,22 +340,8 @@ class WebScrapper(WebScarpperBase):
         job_html_list_html = job_html_list_html.find('div', class_='list_body')
         return job_html_list_html.find_all('div', class_=lambda x: x and 'list_item' in x.split(), id=lambda y: y and y.startswith('rec-'))
 
-    def processJobDataWithLocCode(self, job_html_list, loc_code, max_item_list):    
-        if job_html_list is None:
-            return False
-        
-        item_cnt = len(job_html_list)
-        for item in tqdm(job_html_list, total=item_cnt):
-            job_id = item.get("id")
-            
-            if job_id == None:
-                continue
-            
-            if job_id in self.job_data:
-                self.job_data[job_id].setdefault("loc_code", set()).add(loc_code)
-                continue
-            
-            self.job_data[job_id] = {
+    def _processItemData(self, item):
+        return {
                 "company_name": item.select_one(".col.company_nm .str_tit").get_text(strip=True) if item.select_one(".col.company_nm .str_tit") else None,
                 "company_href": item.select_one(".col.company_nm .str_tit").get("href") if item.select_one(".col.company_nm .str_tit") else None,
                 "main_corp": item.select_one(".col.company_nm .main_corp").get_text(strip=True) if item.select_one(".col.company_nm .main_corp") else None,
@@ -367,8 +353,26 @@ class WebScrapper(WebScarpperBase):
                 "education": item.select_one(".col.recruit_info .education").get_text(strip=True) if item.select_one(".col.recruit_info .education") else None,
                 "deadline": item.select_one(".col.support_info .support_detail .date").get_text(strip=True) if item.select_one(".col.support_info .support_detail .date") else None,
                 "registered_days": item.select_one(".col.support_info .support_detail .deadlines").get_text(strip=True) if item.select_one(".col.support_info .support_detail .deadlines") else None,
-                "loc_code": set(loc_code),
+                "loc_code": set(),
+                "job_code": set(),
+                "sal_code": int,
             }
+    
+    def processJobDataWithLocCode(self, job_html_list, loc_code, max_item_list):    
+        if job_html_list is None:
+            return False
+        
+        item_cnt = len(job_html_list)
+        for item in tqdm(job_html_list, total=item_cnt):
+            job_id = item.get("id")
+            
+            if job_id == None:
+                continue
+            
+            if job_id not in self.job_data.keys():
+                self.job_data[job_id] = self._processItemData(item)
+            
+            self.job_data[job_id]["loc_code"].add(loc_code)
         
         if item_cnt < max_item_list:
             return False
@@ -385,25 +389,11 @@ class WebScrapper(WebScarpperBase):
             if job_id == None:
                 continue
             
-            if job_id in self.job_data:
-                self.job_data[job_id].setdefault("job_code", set()).add(job_code)
-                continue
+            if job_id not in self.job_data.keys():
+                self.job_data[job_id] = self._processItemData(item)
             
-            self.job_data[job_id] = {
-                "company_name": item.select_one(".col.company_nm .str_tit").get_text(strip=True) if item.select_one(".col.company_nm .str_tit") else None,
-                "company_href": item.select_one(".col.company_nm .str_tit").get("href") if item.select_one(".col.company_nm .str_tit") else None,
-                "main_corp": item.select_one(".col.company_nm .main_corp").get_text(strip=True) if item.select_one(".col.company_nm .main_corp") else None,
-                "job_title": item.select_one(".col.notification_info .job_tit .str_tit").get_text(strip=True) if item.select_one(".col.notification_info .job_tit .str_tit") else None,
-                "job_href": item.select_one(".col.notification_info .job_tit .str_tit").get("href") if item.select_one(".col.notification_info .job_tit .str_tit") else None,
-                "job_sectors": [sector.get_text(strip=True) for sector in item.select(".job_meta .job_sector span")] if item.select(".job_meta .job_sector span") else None,
-                "work_place": item.select_one(".col.recruit_info .work_place").get_text(strip=True) if item.select_one(".col.recruit_info .work_place") else None,
-                "career": item.select_one(".col.recruit_info .career").get_text(strip=True) if item.select_one(".col.recruit_info .career") else None,
-                "education": item.select_one(".col.recruit_info .education").get_text(strip=True) if item.select_one(".col.recruit_info .education") else None,
-                "deadline": item.select_one(".col.support_info .support_detail .date").get_text(strip=True) if item.select_one(".col.support_info .support_detail .date") else None,
-                "registered_days": item.select_one(".col.support_info .support_detail .deadlines").get_text(strip=True) if item.select_one(".col.support_info .support_detail .deadlines") else None,
-                "job_code": set(job_code),
-            }
-        
+            self.job_data[job_id]['job_code'].add(job_code)
+
         if item_cnt < max_item_list:
             return False
         return True
@@ -448,7 +438,7 @@ class WebScrapper(WebScarpperBase):
                 if not self.processJobDataWithJobCode(self.getJobListHTMLFromHTML(raw_html), job_code, max_list_item):
                     break
                 page_cnt += 1
-        
+
 
 if __name__ == "__main__":
     code_url = "https://oapi.saramin.co.kr"
