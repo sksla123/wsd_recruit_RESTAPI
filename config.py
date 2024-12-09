@@ -4,6 +4,10 @@ import os
 load_dotenv()
 
 class Config:
+    # Flask Configuation
+    FLASK_BASE_URL = os.getenv('FLASK_BASE_URL')
+    FLASK_PORT = os.getenv('FLASK_PORT')
+
     # MySQL Configuration
     MySQL_DB_URL = os.getenv('MySQL_DB_URL')
     MySQL_DB_PORT = int(os.getenv('MySQL_DB_PORT'))
@@ -24,20 +28,3 @@ class Config:
     # Database URI for SQLAlchemy
     SQLALCHEMY_DATABASE_URI = f"mysql+pymysql://{MySQL_DB_USER}:{MySQL_DB_PASSWORD}@{MySQL_DB_URL}:{MySQL_DB_PORT}/{MySQL_DB_NAME}?charset=utf8mb4"  # 쿼리 매개변수 추가
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-
-    @classmethod
-    def get_db_config(cls):
-        return {
-            'MySQL':{
-                'url': cls.MySQL_DB_URL,
-                'port': cls.MySQL_DB_PORT,
-                'user': cls.MySQL_DB_USER,
-                'password': cls.MySQL_DB_PASSWORD,
-                'database': cls.MySQL_DB_NAME
-            },
-            'Redis': {
-                'url': cls.REDIS_DB_URL,
-                'port': cls.REDIS_DB_PORT,
-                'password': cls.REDIS_DB_PASSWORD
-            }
-        }
