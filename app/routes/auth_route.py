@@ -26,4 +26,4 @@ class RefreshToken(Resource):
 class Profile(Resource):
     def put(self):
 
-        return auth_service.user_profile(request.json)
+        return auth_service.update_user_profile(request.json)
