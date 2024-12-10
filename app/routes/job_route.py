@@ -1,6 +1,6 @@
 from flask import request
 from flask_restx import Namespace, Resource, fields
-from services import job_service
+from app.services import job_service
 
 job = Namespace('job', description='poster related operations')
 

@@ -1,6 +1,6 @@
 from flask import request
 from flask_restx import Namespace, Resource, fields
-from services import bookmark_service
+from app.services import bookmark_service
 
 bookmark = Namespace('bookmark', description='User Bookmark related operations')
 

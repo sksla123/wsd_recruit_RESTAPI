@@ -1,6 +1,6 @@
 from flask import request
 from flask_restx import Namespace, Resource, fields
-from services import auth_service
+from app.services import auth_service
 
 auth = Namespace('auth', description='Authentication related operations')
 

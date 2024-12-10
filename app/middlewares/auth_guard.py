@@ -5,8 +5,7 @@ from zoneinfo import ZoneInfo
 
 class AuthGuard:
     EXCLUDED_ENDPOINTS = [
-        'application.userregister_get',
-        'application.userregister_post',
+        'auth.userregister_post'
     ]
 
     test = True
@@ -17,13 +16,13 @@ class AuthGuard:
         def authenticate():
             g.middleware_executed = False 
 
+            if request.endpoint in AuthGuard.EXCLUDED_ENDPOINTS:
+                return
+            
             if AuthGuard.test: 
                 g.middleware_executed = True
                 return
             
-            if request.endpoint in AuthGuard.EXCLUDED_ENDPOINTS:
-                return
-
             # Authorization 헤더 확인
             token = request.headers.get('Authorization')
             if not token or not token.startswith("Bearer "):
