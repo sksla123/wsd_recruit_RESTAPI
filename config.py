@@ -8,6 +8,8 @@ class Config:
     FLASK_BASE_URL = os.getenv('FLASK_BASE_URL')
     FLASK_PORT = os.getenv('FLASK_PORT')
 
+    TIME_ZONE = os.getenv('TIMEZONE')
+
     # MySQL Configuration
     MySQL_DB_URL = os.getenv('MySQL_DB_URL')
     MySQL_DB_PORT = int(os.getenv('MySQL_DB_PORT'))

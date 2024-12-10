@@ -15,6 +15,69 @@ from bs4 import BeautifulSoup
 from dataclasses import dataclass, field
 
 import gzip
+import pickle
+
+class JobDictToExcel:
+    def __init__(self, data):
+        self.data = data
+
+    def sanitize_data(self, value):
+        if isinstance(value, str):
+            illegal_characters = re.compile(r"[\x00-\x08\x0B\x0C\x0E-\x1F]", re.UNICODE)
+            return illegal_characters.sub("", value)
+        elif isinstance(value, set):
+            return str(list(value))
+        elif value is None:
+            return None
+        else:
+            return str(value)
+
+    def convert_to_excel(self, file_name):
+        processed_data = []
+        for key, value in tqdm(self.data.items(), desc="데이터 변환 중"):
+            row = {"id": key}
+            for k, v in value.items():
+                row[k] = self.sanitize_data(v)
+            processed_data.append(row)
+        print("변환 완료")
+        print("변환된 데이터를 판다스 객체로 저장합니다.")
+        self.df = pd.DataFrame(processed_data)
+        print(f"변환된 객체를 '{file_name}' 위치에 저장합니다.")
+        self.df.to_excel(file_name, index=False)
+        print("저장완료")
+
+class ExcelToJobDict:
+    @staticmethod
+    def convert_to_dict(file_name):
+        df = pd.read_excel(file_name)
+        result = {}
+
+        for _, row in tqdm(df.iterrows(), total=len(df), desc="Excel을 딕셔너리로 변환 중"):
+            id_value = row["id"]
+            result[id_value] = {}
+            for col in df.columns:
+                if col == "id":
+                    continue
+                value = row[col]
+                if pd.isna(value):
+                    result[id_value][col] = None
+                elif isinstance(value, str) and value.startswith("[") and value.endswith("]"):
+                    result[id_value][col] = set(eval(value))
+                else:
+                    result[id_value][col] = value
+
+        return result
+
+def save_to_pickle(data, filename):
+    with open(filename, 'wb') as file:
+        pickle.dump(data, file)
+    print(f"데이터가 {filename}에 성공적으로 저장되었습니다.")
+
+def load_from_pickle(filename):
+    with open(filename, 'rb') as file:
+        data = pickle.load(file)
+    print(f"{filename}에서 데이터를 성공적으로 불러왔습니다.")
+    return data
 
 def now_korea():
     return datetime.now(ZoneInfo("Asia/Seoul"))
@@ -27,10 +90,12 @@ def getResponsedHtml(url,
                      num_of_tries=5, 
                      cache_folder='./__htmlCache__',
                      ignore_cache=False,
+                     stop_caching=False,
                      ):
     '''
     반복된 요청으로 차단되지 않도록, cache 폴더에 html을 백업해두고 필요시 url로 요청하지 않고 폴더에서 꺼내옴
     만약 오래된 cache 파일을 무시하게 하고 싶으면, ignore_cache 플래그를 True로 설정
+    cache 저장을 하고 싶지 않다면, stop_caching을 True로 설정
     '''
     
     safe_file_name = urllib.parse.quote(url, safe='')
@@ -52,9 +117,10 @@ def getResponsedHtml(url,
                 time.sleep(3) # 임시 차단되었을 가능성이 있으므로 3초 쉬고 재시도
                 continue
             html = BeautifulSoup(response.text, 'html.parser')
-            with gzip.open(cache_file_path, 'wt', encoding='utf-8') as f:
-                f.write(str(html))
-                # print('cache 저장됨')
+            if not stop_caching:
+                with gzip.open(cache_file_path, 'wt', encoding='utf-8') as f:
+                    f.write(str(html))
+                    # print('cache 저장됨')
             return html
     
     return None
@@ -194,10 +260,14 @@ class WebScarpperBase():
         self.num_of_tries = num_of_tries
         self.cache_folder = cache_folder
         self.ignore_cache = False
+        self.stop_caching = True
         
         self.urls={}
 
     def setIgnoreCache(self, flag=False):
+        self.ignore_cache = flag
+
+    def setStopCaching(self, flag=True):
         self.ignore_cache = flag
         
 class WebScrapperCodeTable(WebScarpperBase):
@@ -211,7 +281,7 @@ class WebScrapperCodeTable(WebScarpperBase):
         # 산업/업종 코드용 url
         self.urls['industry_code'] = self.base_url + "/guide/code-table3"
         # 직무/직업 코드용 url
-        self.urls['job_code'] = self.base_url + "/guide/code-table4"
+        self.urls['job_code'] = self.base_url + "/guide/code-table5"
 
         self.rawHTMLs = {}
         self.requestRawHTML()
@@ -397,22 +467,20 @@ class WebScrapper(WebScarpperBase):
             return deadline_date.strftime("%Y-%m-%d")
 
     def _preprocessUpdateDate(self, date_str):
-        if None:
+        if not date_str:
             return self.__getDefaultTime()
 
         cur_korea_time = self.__getNowKoreaTime()
         
         match1 = re.search(r'(\d+)일 전 등록', date_str)
         match2 = re.search(r'(\d+)일 전 수정', date_str)
-        if not match1 and not match2:
-            return cur_korea_time.strftime("%Y-%m-%d")
 
         if match1:
             days_ago = int(match1.group(1))
-        if match2:
+        elif match2:
             days_ago = int(match2.group(1))
         else:
-            return self.__getDefaultTime()
+            return cur_korea_time.strftime("%Y-%m-%d")
         
         c_date = cur_korea_time - timedelta(days=days_ago)
         
@@ -424,7 +492,7 @@ class WebScrapper(WebScarpperBase):
             return 1, input_string
         return 0, input_string
 
-    def _preprocess(self, input_string):
+    def _preprocessEdu(self, input_string):
         # 입력 예시: ['고졸', '대학(2,3년)', '대학교(4년)', '석사', '박사', '학력무관']
         flag, input_string = self.__removeUpperArrow(input_string)
         
@@ -463,7 +531,7 @@ class WebScrapper(WebScarpperBase):
                 "sal_code": 100,
             }
 
-        flag, edu_code = self._preprocess(data['education'])
+        flag, edu_code = self._preprocessEdu(data['education'])
         data['edu_code'] = edu_code
         data['edu_upper'] = flag
         
@@ -474,7 +542,7 @@ class WebScrapper(WebScarpperBase):
             return False
         
         item_cnt = len(job_html_list)
-        for item in tqdm(job_html_list, total=item_cnt):
+        for item in job_html_list:
             job_id = item.get("id")
             
             if job_id == None:
@@ -497,7 +565,7 @@ class WebScrapper(WebScarpperBase):
             return False
             
         item_cnt = len(job_html_list)
-        for item in tqdm(job_html_list, total=item_cnt):
+        for item in job_html_list:
             job_id = item.get("id")
             
             if job_id == None:
@@ -521,7 +589,7 @@ class WebScrapper(WebScarpperBase):
         loc_2_list = self.code_table.total_loc['2차 지역코드'].tolist()
         max_list_item = 1000
         
-        for loc_2_code in tqdm(loc_2_list, total=len(loc_2_list)):
+        for loc_2_code in loc_2_list:
             param_dict = {}
             page_cnt = 1
             param_dict['page_count'] = max_list_item
@@ -551,7 +619,7 @@ class WebScrapper(WebScarpperBase):
                 param_dict['cat_kewd='] = job_code
                 url = self.addParam2Url(self.urls['job_category_url'], param_dict)
                 # print(url)
-                raw_html = getResponsedHtml(url, self.headers, self.num_of_tries, self.cache_folder, self.ignore_cache)
+                raw_html = getResponsedHtml(url, self.headers, self.num_of_tries, self.cache_folder, self.ignore_cache, self.stop_caching)
                 if not self.processJobDataWithJobCode(self.getJobListHTMLFromHTML(raw_html), job_code, max_list_item):
                     break
                 page_cnt += 1
@@ -577,31 +645,42 @@ class WebScrapper(WebScarpperBase):
                     param_dict['cat_kewd='] = job_code
                     url = self.addParam2Url(self.urls['job_category_url'], param_dict)
                     # print(url)
-                    raw_html = getResponsedHtml(url, self.headers, self.num_of_tries, self.cache_folder, self.ignore_cache)
+                    raw_html = getResponsedHtml(url, self.headers, self.num_of_tries, self.cache_folder, self.ignore_cache, self.stop_caching)
                     if not self.processJobDataWithJobCode(self.getJobListHTMLFromHTML(raw_html), job_code, max_list_item, sal_code):
                         break
                     page_cnt += 1
-            
 
-if __name__ == "__main__":
-    code_url = "https://oapi.saramin.co.kr"
-    base_url = "https://www.saramin.co.kr"
-    
+def startWebScrapping(file_name = "data", ignore_cache=False, stop_caching=True):
+    code_url = "https://oapi.saramin.co.kr" # CodeTable 관련 값을 받을 수 있는 url
+    base_url = "https://www.saramin.co.kr" # 실제 사람인 베이스 주소
+
     # Robots.txt 방지용
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     }
-    
+
     wsct = WebScrapperCodeTable(code_url, headers)
     wsct.processTableFromRawHTML()
-    
+    wsct.setIgnoreCache(ignore_cache)
+    wsct.setStopCaching(stop_caching)
     code_table = wsct.getCodeTable()
-
+    
     ws = WebScrapper(code_table, base_url, headers)
-    ws.webScrapAllJobCategory()
+    ws.setIgnoreCache(ignore_cache)
+    ws.setStopCaching(stop_caching)
+    ws.webScrapAllJobCategoryWithSalData()
+    ws.webScrapAllDomestic()
+    
+    korea_time = datetime.now(ZoneInfo("Asia/Seoul"))
+    timestamp = korea_time.strftime("%Y%m%d%H%M%S")
+    backup_file_path = os.path.join('./data', f"{timestamp}_{file_name}_backup.pkl")
 
-    # table_dict = ws._processTableFromRawHTML(ws.rawHTMLs['job_code'])
-    # print(len(table_dict))
-    # for key in table_dict.keys():
-    #     print(key)
-    #     print(table_dict[key], end='\n\n')
+    save_to_pickle(ws.job_data, backup_file_path)
+
+    excel_file_path = os.path.join('./data', f"{timestamp}_{file_name}.xlsx")
+    converter = JobDictToExcel(ws.job_data)
+
+    converter.convert_to_excel(excel_file_path)
+
+    return wsct, ws
+    

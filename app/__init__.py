@@ -1,34 +1,29 @@
 from flask import Flask
-from flask_restx import Api, Resource
+from flask_restx import Api
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object('config.Config')
 
-    app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-        'pool_recycle': 3600,  # 1시간마다 연결 재활용
-        'pool_pre_ping': True,  # 연결 사용 전에 ping 테스트
-    }
-
-    # Initialize API with Swagger documentation
-    api = Api(app, version='1.0', title='Recruilting Backend REST API',
+    api = Api(app,
+              version='1.0',
+              title='Recruilting Backend REST API',
               description='API for Recreuilting Backend',
               doc='/api-docs',
-              add_specs=False
+              add_specs=False,
+
               )
-    
-    # # 루트 경로에 대한 GET 요청 처리
-    # class Root(Resource): 
-    #     def get(self):
-    #         return {"message": "Hello!"}
+
+    # 인증 미드웨어 추가    
+    from middlewares.auth_guard import AuthGuard
+    AuthGuard.init_app(app)
         
-    # # 루트 경로에 Resource 등록 (엔드포인트 명시)
-    # api.add_resource(Root, '/', endpoint='root_endpoint')
+    # 라우트 추가
+    from routes import auth_route, application_route, job_route, bookmark_route
+    api.add_namespace(auth_route.auth, path='/auth')
+    api.add_namespace(application_route.application, path='/applications')
+    api.add_namespace(job_route.job, path='/jobs')
+    api.add_namespace(bookmark_route.job, path='/bookmarks')
+
     print(app.url_map)
-    print(api.endpoints)
-
-    # Import and register routes after initializing app and db
-    from app.routes import auth
-    api.add_namespace(auth.auth, path='/auth')
-
     return app
