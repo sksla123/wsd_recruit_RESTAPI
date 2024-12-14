@@ -143,9 +143,11 @@ def get_latest_file_paths(folder_path):
     data_file = data_files[0]
 
     if 'selected_codetable_data_backup.pkl' in data_files:
-        codetable_file_file = 'selected_codetable_data_backup.pkl'
+        # print("selected codetable 파일이 존재합니다.")
+        codetable_file = 'selected_codetable_data_backup.pkl'
 
     if 'selected_data_backup.pkl' in data_files:
+        # print("selected data 파일이 존재합니다.")
         data_file = 'selected_data_backup.pkl'
 
     return codetable_file, data_file
