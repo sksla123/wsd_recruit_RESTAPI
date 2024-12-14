@@ -4,9 +4,9 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 class AuthGuard:
-    EXCLUDED_ENDPOINTS = [
-        'auth.userregister_post'
-    ]
+    EXCLUDED_ENDPOINTS = {
+        'auth_user_register': ['POST']
+    }
 
     test = True
 
@@ -16,8 +16,10 @@ class AuthGuard:
         def authenticate():
             g.middleware_executed = False 
 
-            if request.endpoint in AuthGuard.EXCLUDED_ENDPOINTS:
-                return
+            if request.endpoint in AuthGuard.EXCLUDED_ENDPOINTS.keys():
+                if  request.method in AuthGuard.EXCLUDED_ENDPOINTS[request.endpoint]:
+                    return
+
             
             if AuthGuard.test: 
                 g.middleware_executed = True
