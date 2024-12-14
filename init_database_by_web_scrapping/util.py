@@ -1,9 +1,46 @@
+import os
 import re
+
+import glob
+import datetime
+
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import pickle
 import pandas as pd
 
 from tqdm.auto import tqdm
+
+import base64
+
+def base64_encode(s):
+    """
+    주어진 문자열을 base64로 인코딩합니다.
+    
+    Args:
+    s: 인코딩할 문자열.
+    
+    Returns:
+    base64로 인코딩된 문자열.
+    """
+    return base64.b64encode(s.encode('utf-8')).decode('utf-8')
+
+
+def base64_decode(s):
+    """
+    주어진 base64 문자열을 디코딩합니다.
+    
+    Args:
+    s: 디코딩할 base64 문자열.
+    
+    Returns:
+    디코딩된 문자열.
+    """
+    return base64.b64decode(s.encode('utf-8')).decode('utf-8')
+
+def now_korea():
+    return datetime.now(ZoneInfo("Asia/Seoul"))
 
 class JobDictToExcel:
     def __init__(self, data):
@@ -66,3 +103,41 @@ def load_from_pickle(filename):
         data = pickle.load(file)
     print(f"{filename}에서 데이터를 성공적으로 불러왔습니다.")
     return data
+
+
+
+def get_latest_file_paths(folder_path):
+    """
+    특정 폴더에서 조건에 맞는 가장 최근 파일 두 개의 경로를 반환합니다.
+
+    Args:
+        folder_path: 파일을 찾을 폴더 경로
+
+    Returns:
+        튜플: (codetable 파일 경로, data 파일 경로). 파일이 없으면 None을 반환합니다.
+               두 파일 중 하나라도 찾지 못하면 None을 반환합니다.
+        예외: 폴더 경로가 유효하지 않은 경우 FileNotFoundError를 발생시킵니다.
+    """
+
+    if not os.path.isdir(folder_path):
+        raise FileNotFoundError(f"폴더 경로 '{folder_path}'가 존재하지 않습니다.")
+
+    codetable_files = []
+    data_files = []
+
+    # 파일 목록 얻기 (glob 사용)
+    for filename in glob.glob(os.path.join(folder_path, "*.pkl")):
+        if "_codetable_data_" in filename:
+            codetable_files.append(filename)
+        elif "codetable" not in filename and "_data_" in filename:
+            data_files.append(filename)
+
+    if not codetable_files or not data_files:
+        return None
+
+    # 파일 수정 시간으로 정렬 (내림차순)
+    codetable_files.sort(key=os.path.getmtime, reverse=True)
+    data_files.sort(key=os.path.getmtime, reverse=True)
+
+
+    return codetable_files[0], data_files[0]

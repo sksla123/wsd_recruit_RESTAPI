@@ -14,11 +14,10 @@ from bs4 import BeautifulSoup
 
 import gzip
 
-from .util import JobDictToExcel, save_to_pickle
+from .util import JobDictToExcel, save_to_pickle, now_korea
 from .job_dataclasses import JobCodeTable, CodeTable
 
-def now_korea():
-    return datetime.now(ZoneInfo("Asia/Seoul"))
+import argparse
 
 def getResponsedHtml(url, 
                      headers = {
@@ -73,6 +72,7 @@ class WebScarpperBase():
         self.cache_folder = cache_folder
         self.ignore_cache = False
         self.stop_caching = True
+        self.isTest = False
         
         self.urls={}
 
@@ -81,6 +81,9 @@ class WebScarpperBase():
 
     def setStopCaching(self, flag=True):
         self.ignore_cache = flag
+
+    def set_test_mode(self, flag=False):
+        self.isTest = flag
         
 class WebScrapperCodeTable(WebScarpperBase):
     def  __init__(self, base_url, headers, num_of_tries=5, cache_folder='./__htmlCache__'):
@@ -400,8 +403,12 @@ class WebScrapper(WebScarpperBase):
         # 지역 별 순회
         loc_2_list = self.code_table.total_loc['2차 지역코드'].tolist()
         max_list_item = 1000
-        
-        for loc_2_code in loc_2_list:
+
+        cnt_for_test = 0
+        for loc_2_code in tqdm(loc_2_list, total=len(loc_2_list)):
+            if self.isTest and cnt_for_test >= 2:
+                break
+                
             param_dict = {}
             page_cnt = 1
             param_dict['page_count'] = max_list_item
@@ -414,7 +421,7 @@ class WebScrapper(WebScarpperBase):
                 if not self.processJobDataWithLocCode(self.getJobListHTMLFromHTML(raw_html), loc_2_code, max_list_item):
                     break
                 page_cnt += 1
-
+            cnt_for_test += 1
 
     def webScrapAllJobCategory(self):
         print("시작")
@@ -422,26 +429,34 @@ class WebScrapper(WebScarpperBase):
         job_code_list = self.code_table.jobCodeTable.get_total_dataframe()['직무 코드'].tolist()
         max_list_item = 1000
         
+        cnt_for_test = 0
         for job_code in tqdm(job_code_list, total=len(job_code_list)):
+            if self.isTest and cnt_for_test >= 2:
+                break
             param_dict = {}
             page_cnt = 1
             param_dict['page_count'] = max_list_item
             while(True):
                 param_dict['page'] = page_cnt
-                param_dict['cat_kewd='] = job_code
+                param_dict['cat_kewd'] = job_code
                 url = self.addParam2Url(self.urls['job_category_url'], param_dict)
                 # print(url)
                 raw_html = getResponsedHtml(url, self.headers, self.num_of_tries, self.cache_folder, self.ignore_cache, self.stop_caching)
                 if not self.processJobDataWithJobCode(self.getJobListHTMLFromHTML(raw_html), job_code, max_list_item):
                     break
                 page_cnt += 1
+            cnt_for_test += 1
 
     def webScrapAllJobCategoryWithSalData(self):
         print("시작")
         # 지역 별 순회
         job_code_list = self.code_table.jobCodeTable.get_total_dataframe()['직무 코드'].tolist()
         max_list_item = 1000
+
+        cnt_for_test = 0
         for job_code in tqdm(job_code_list, total=len(job_code_list)):
+            if self.isTest and cnt_for_test >= 2:
+                break
             for sal_code in range(17):
                 param_dict = {}
                 if sal_code == 0:
@@ -454,15 +469,16 @@ class WebScrapper(WebScarpperBase):
                 param_dict['page_count'] = max_list_item
                 while(True):
                     param_dict['page'] = page_cnt
-                    param_dict['cat_kewd='] = job_code
+                    param_dict['cat_kewd'] = job_code
                     url = self.addParam2Url(self.urls['job_category_url'], param_dict)
                     # print(url)
                     raw_html = getResponsedHtml(url, self.headers, self.num_of_tries, self.cache_folder, self.ignore_cache, self.stop_caching)
                     if not self.processJobDataWithJobCode(self.getJobListHTMLFromHTML(raw_html), job_code, max_list_item, sal_code):
                         break
                     page_cnt += 1
+            cnt_for_test += 1
 
-def startWebScrapping(save_folder="./data", file_name = "data", ignore_cache=False, stop_caching=True):
+def startWebScrapping(save_folder="./data", file_name = "data", ignore_cache=False, stop_caching=True, isTest=False):
     code_url = "https://oapi.saramin.co.kr" # CodeTable 관련 값을 받을 수 있는 url
     base_url = "https://www.saramin.co.kr" # 실제 사람인 베이스 주소
 
@@ -480,19 +496,50 @@ def startWebScrapping(save_folder="./data", file_name = "data", ignore_cache=Fal
     ws = WebScrapper(code_table, base_url, headers)
     ws.setIgnoreCache(ignore_cache)
     ws.setStopCaching(stop_caching)
+    ws.set_test_mode(isTest)
     ws.webScrapAllJobCategoryWithSalData()
     ws.webScrapAllDomestic()
     
     korea_time = datetime.now(ZoneInfo("Asia/Seoul"))
     timestamp = korea_time.strftime("%Y%m%d%H%M%S")
     backup_file_path = os.path.join(save_folder, f"{timestamp}_{file_name}_backup.pkl")
-
+    backup_code_table_file_path = os.path.join(save_folder, f"{timestamp}_codetable_{file_name}_backup.pkl")
+    
     save_to_pickle(ws.job_data, backup_file_path)
+    save_to_pickle(wsct.code_table, backup_code_table_file_path)
 
     excel_file_path = os.path.join(save_folder, f"{timestamp}_{file_name}.xlsx")
     converter = JobDictToExcel(ws.job_data)
 
     converter.convert_to_excel(excel_file_path)
-
+    ws.set_test_mode()
+    
     return wsct, ws
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Test script with isTest argument.")
+    parser.add_argument('--isTest', action='store_true', help='Enable test mode.')
+    
+    args = parser.parse_args()
+
+    if args.isTest:
+        print("테스트 모드로 동작합니다.")
+    
+    # Jupyter Notebook 환경인지 확인
+    if '__file__' in globals():
+        # 일반 Python 스크립트에서는 __file__ 사용
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+    else:
+        # Jupyter Notebook 환경에서는 os.getcwd() 사용
+        current_dir = os.getcwd()
+    
+    # data 디렉토리 경로 결합
+    dir_path = os.path.join(current_dir, "data")
+    
+    # 디렉토리 생성 (이미 존재하면 무시)
+    os.makedirs(dir_path, exist_ok=True)
+
+    wsct, ws = startWebScrapping(save_folder=dir_path, file_name="data", ignore_cache=False, stop_caching=False, isTest=args.isTest)
+
     
