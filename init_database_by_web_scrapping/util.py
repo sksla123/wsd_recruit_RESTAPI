@@ -139,5 +139,13 @@ def get_latest_file_paths(folder_path):
     codetable_files.sort(key=os.path.getmtime, reverse=True)
     data_files.sort(key=os.path.getmtime, reverse=True)
 
+    codetable_file = codetable_files[0]
+    data_file = data_files[0]
 
-    return codetable_files[0], data_files[0]
+    if 'selected_codetable_data_backup.pkl' in data_files:
+        codetable_file_file = 'selected_codetable_data_backup.pkl'
+
+    if 'selected_data_backup.pkl' in data_files:
+        data_file = 'selected_data_backup.pkl'
+
+    return codetable_file, data_file

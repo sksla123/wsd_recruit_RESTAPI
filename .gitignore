@@ -14,3 +14,9 @@ __pycache__/
 
 # htmlCache 파일
 __htmlCache__/
+
+# 기타 데이터 파일
+data/
+**/data/
+**/*.pkl
+**/*.xlsx
