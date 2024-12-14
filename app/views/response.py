@@ -31,10 +31,3 @@ def fail(message="실패", status_code=400):
         "status": "fail",
         "message": message
     }), status_code
-
-def test_middleware():
-    return jsonify({
-        "status": "success",
-        "message": message,
-        "data": data
-    }), 200

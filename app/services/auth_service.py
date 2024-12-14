@@ -8,9 +8,9 @@ def register_user(data):
     message = "register_user 함수 실행됨"
     middleware_executed = g.get('middleware_executed', False)  # 미들웨어 실행 여부 확인
     return {
-        "message": message,
-        "middleware_executed": middleware_executed
-    }
+        "middleware_executed": middleware_executed,
+        "input_data" : data # 입력 받은 데이터도 함께 반환
+    }, message
 
 def user_login(data):
     """
@@ -19,9 +19,9 @@ def user_login(data):
     message = "user_login 함수 실행됨"
     middleware_executed = g.get('middleware_executed', False)  # 미들웨어 실행 여부 확인
     return {
-        "message": message,
-        "middleware_executed": middleware_executed
-    }
+        "middleware_executed": middleware_executed,
+        "input_data" : data
+    }, message
 
 def refresh_token(data):
     """
@@ -30,9 +30,9 @@ def refresh_token(data):
     message = "refresh_token 함수 실행됨"
     middleware_executed = g.get('middleware_executed', False)  # 미들웨어 실행 여부 확인
     return {
-        "message": message,
-        "middleware_executed": middleware_executed
-    }
+        "middleware_executed": middleware_executed,
+        "input_data" : data
+    }, message
 
 def update_user_profile(data):
     """
@@ -41,6 +41,6 @@ def update_user_profile(data):
     message = "update_user_profile 함수 실행됨"
     middleware_executed = g.get('middleware_executed', False)  # 미들웨어 실행 여부 확인
     return {
-        "message": message,
-        "middleware_executed": middleware_executed
-    }
+        "middleware_executed": middleware_executed,
+        "input_data" : data
+    }, message
