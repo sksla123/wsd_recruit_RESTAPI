@@ -1,3 +1,4 @@
+# routes/auth_route.py
 from flask import request
 from flask_restx import Namespace, Resource, fields
 from app.services import auth_service

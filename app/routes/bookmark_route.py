@@ -1,3 +1,4 @@
+# routes/bookmark_route.py
 from flask import request
 from flask_restx import Namespace, Resource, fields
 from app.services import bookmark_service
@@ -12,6 +13,5 @@ class Bookmarks(Resource):
     
     def get(self):
         
-        query_params = request.args.to_dict()
-        return bookmark_service.get_application_log(query_params)
+        return bookmark_service.get_application_log(request.json)
     

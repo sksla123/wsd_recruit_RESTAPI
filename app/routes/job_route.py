@@ -1,3 +1,4 @@
+# routes/job_route.py
 from flask import request
 from flask_restx import Namespace, Resource, fields
 from app.services import job_service
@@ -14,5 +15,6 @@ class Applications(Resource):
 @job.route('/<int:poster_id>')
 class Application(Resource):
     def get(self, poster_id):
+        
         query_params = request.args.to_dict()
-        return job_service.get_application(query_params)
+        return job_service.get_application(query_params, poster_id)
