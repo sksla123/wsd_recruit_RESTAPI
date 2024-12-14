@@ -39,6 +39,9 @@ def getResponsedHtml(url,
     cache_file_path = os.path.join(cache_folder, f'{safe_file_name}.txt.gz')
 
     os.makedirs(cache_folder, exist_ok=True)
+    # print("캐쉬 파일 경로:", cache_file_path)
+    # print("ignore_cache:", ignore_caching)
+    # print("stop_caching:", ignore_caching)
 
     if (not ignore_cache and os.path.exists(cache_file_path)):
         with gzip.open(cache_file_path, 'rt', encoding='utf-8') as f:
@@ -80,7 +83,7 @@ class WebScarpperBase():
         self.ignore_cache = flag
 
     def setStopCaching(self, flag=True):
-        self.ignore_cache = flag
+        self.stop_caching = flag
 
     def set_test_mode(self, flag=False):
         self.isTest = flag
@@ -417,7 +420,7 @@ class WebScrapper(WebScarpperBase):
                 param_dict['loc_cd'] = loc_2_code
                 url = self.addParam2Url(self.urls['domestic_url'], param_dict)
                 # print(url)
-                raw_html = getResponsedHtml(url, self.headers, self.num_of_tries, self.cache_folder, self.ignore_cache)
+                raw_html = getResponsedHtml(url, self.headers, self.num_of_tries, self.cache_folder, self.ignore_cache, self.stop_caching)
                 if not self.processJobDataWithLocCode(self.getJobListHTMLFromHTML(raw_html), loc_2_code, max_list_item):
                     break
                 page_cnt += 1
@@ -512,6 +515,11 @@ def startWebScrapping(save_folder="./data", file_name = "data", ignore_cache=Fal
     converter = JobDictToExcel(ws.job_data)
 
     converter.convert_to_excel(excel_file_path)
+    
+    wsct.setIgnoreCache()
+    wsct.setStopCaching()
+    ws.setIgnoreCache()
+    ws.setStopCaching()
     ws.set_test_mode()
     
     return wsct, ws
