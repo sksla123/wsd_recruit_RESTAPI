@@ -1,114 +1,100 @@
 # models/company.py
+
 from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
 
 Base = declarative_base()
 
 class Company(Base):
     """
-    Company 테이블 모델
-
-    Attributes:
-        comp_id (int): 회사 ID (PK)
-        comp_name (str): 회사 이름 (NN)
-        comp_link (str): 회사 링크
-        group_id (int): 소속 그룹 ID (FK, CompanyGroup.group_id)
-        group (CompanyGroup): 소속 그룹 (relationship)
+    Company 테이블에 대한 SQLAlchemy 모델 클래스
     """
-    __tablename__ = 'Company'
+    __tablename__ = "Company"
 
     comp_id = Column(Integer, primary_key=True, autoincrement=True)
     comp_name = Column(String(255), nullable=False)
     comp_link = Column(String(255))
-    group_id = Column(Integer, ForeignKey('CompanyGroup.group_id', ondelete='SET NULL'))
+    group_id = Column(Integer, ForeignKey("CompanyGroup.group_id"), nullable=True)
 
-    group = relationship("CompanyGroup", backref="companies")
+    group = relationship("CompanyGroup", back_populates="companies") # CompanyGroup 과의 관계 설정
 
     def to_dict(self):
-        """
-        모델 객체를 딕셔너리로 변환
-
-        Returns:
-            dict: 모델의 데이터를 담은 딕셔너리
-        """
         return {
             "comp_id": self.comp_id,
             "comp_name": self.comp_name,
             "comp_link": self.comp_link,
             "group_id": self.group_id,
-            "group_name": self.group.group_name if self.group else None  # 그룹 이름 추가
         }
 
-def create_company(db: Session, comp_name: str, comp_link: str = None, group_id: int = None):
-    """새로운 Company 레코드 생성"""
-    try:
-      db_company = Company(comp_name=comp_name, comp_link=comp_link, group_id = group_id)
-      db.add(db_company)
-      db.commit()
-      db.refresh(db_company)
-      return db_company.to_dict(), "회사가 성공적으로 생성되었습니다."
-    except IntegrityError:
-      db.rollback()
-      return None, "이미 존재하는 회사 이름입니다."
-    except Exception as e:
-        db.rollback()
-        return None, f"회사 생성 중 오류가 발생했습니다: {str(e)}"
+def get_companies(db: Session, page: int = 1, item_counts: int = 20) -> dict:
+    """
+    Company 목록을 조회하는 함수 (Pagination 적용)
+    """
+    offset = (page - 1) * item_counts
+    companies = db.query(Company).offset(offset).limit(item_counts).all()
+    total_count = db.query(Company).count()
+    return {
+        "companies": [company.to_dict() for company in companies],
+        "total_count": total_count,
+        "current_page": page,
+        "total_page": (total_count + item_counts - 1) // item_counts
+    }
 
-def get_company(db: Session, comp_id: int):
-    """comp_id로 Company 레코드 조회"""
+def create_company(db: Session, comp_name: str, comp_link: str = None, group_id: int = None) -> dict:
+    """
+    새로운 Company를 생성하는 함수
+    """
     try:
-      company = db.query(Company).filter(Company.comp_id == comp_id).first()
-      if company:
-        return company.to_dict(), "회사 조회 성공"
-      return None, "해당하는 회사가 없습니다."
-    except Exception as e:
-        return None, f"회사 조회 중 오류가 발생했습니다: {str(e)}"
-
-def get_company_list(db: Session, page: int = 1, per_page: int = 20, pagination: bool = False):
-    """Company 레코드 목록 조회 (페이지네이션 지원)"""
-    try:
-      query = db.query(Company)
-      if pagination:
-          companies = query.offset((page - 1) * per_page).limit(per_page).all()
-      else:
-          companies = query.all()
-      company_list = [company.to_dict() for company in companies]
-      return company_list, "회사 목록 조회 성공"
-    except Exception as e:
-        return None, f"회사 목록 조회 중 오류가 발생했습니다: {str(e)}"
-
-def update_company(db: Session, comp_id: int, new_comp_name: str = None, new_comp_link: str = None, group_id : int = None):
-    """Company 레코드 업데이트"""
-    try:
-      company = db.query(Company).filter(Company.comp_id == comp_id).first()
-      if company:
-        if new_comp_name:
-          company.comp_name = new_comp_name
-        if new_comp_link:
-          company.comp_link = new_comp_link
-        company.group_id = group_id
+        new_company = Company(comp_name=comp_name, comp_link=comp_link, group_id=group_id)
+        db.add(new_company)
         db.commit()
-        db.refresh(company)
-        return company.to_dict(), "회사가 성공적으로 수정되었습니다."
-      return None, "해당하는 회사가 없습니다."
-    except IntegrityError:
-      db.rollback()
-      return None, "이미 존재하는 회사 이름입니다."
+        db.refresh(new_company)
+        return {"success": True, "company": new_company.to_dict()}
     except Exception as e:
         db.rollback()
-        return None, f"회사 수정 중 오류가 발생했습니다: {str(e)}"
+        return {"success": False, "error": str(e)}
 
-def delete_company(db: Session, comp_id: int):
-    """Company 레코드 삭제"""
-    try:
-      company = db.query(Company).filter(Company.comp_id == comp_id).first()
-      if company:
-        db.delete(company)
-        db.commit()
-        return None, "회사가 성공적으로 삭제되었습니다."
-      return None, "해당하는 회사가 없습니다."
-    except Exception as e:
-        db.rollback()
-        return None, f"회사 삭제 중 오류가 발생했습니다: {str(e)}"
+def get_company_by_id(db: Session, comp_id: int) -> dict:
+    """
+    comp_id로 Company 정보를 가져오는 함수
+    """
+    company = db.query(Company).filter(Company.comp_id == comp_id).first()
+    if company:
+        return {"success": True, "company": company.to_dict()}
+    else:
+        return {"success": False, "message": "Company not found"}
+
+def update_company(db: Session, comp_id: int, new_comp_name: str = None, new_comp_link: str = None, new_group_id : int = None) -> dict:
+    """
+    기존 Company 정보를 수정하는 함수
+    """
+    company = db.query(Company).filter(Company.comp_id == comp_id).first()
+    if company:
+        try:
+            if new_comp_name is not None: company.comp_name = new_comp_name
+            if new_comp_link is not None: company.comp_link = new_comp_link
+            if new_group_id is not None: company.group_id = new_group_id
+            db.commit()
+            return {"success": True, "company": company.to_dict()}
+        except Exception as e:
+            db.rollback()
+            return {"success": False, "error": str(e)}
+    else:
+        return {"success": False, "message": "Company not found"}
+
+def delete_company(db: Session, comp_id: int) -> dict:
+    """
+    기존 Company 정보를 삭제하는 함수
+    """
+    company = db.query(Company).filter(Company.comp_id == comp_id).first()
+    if company:
+        try:
+            db.delete(company)
+            db.commit()
+            return {"success": True}
+        except Exception as e:
+            db.rollback()
+            return {"success": False, "error": str(e)}
+    else:
+        return {"success": False, "message": "Company not found"}

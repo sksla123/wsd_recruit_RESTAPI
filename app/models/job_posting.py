@@ -1,181 +1,214 @@
 # models/job_posting.py
-from sqlalchemy import Column, String, Integer, Date, JSON, ForeignKey
-from sqlalchemy.orm import declarative_base, Session
-from sqlalchemy.exc import IntegrityError
+
+from sqlalchemy import Column, Integer, String, ForeignKey, Date, Text, JSON
+from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.orm import Session
 from datetime import date
 
 Base = declarative_base()
 
 class JobPosting(Base):
     """
-    JobPosting 테이블 모델
-
-    Attributes:
-        comp_id (int): 회사 ID (FK)
-        poster_id (str): 공고 ID (PK)
-        poster_title (str): 공고 제목 (NN)
-        poster_link (str): 공고 링크
-        job_sectors (JSON): 직무 분야 (JSON)
-        job_career (str): 경력 조건
-        job_education (str): 학력 조건
-        edu_code (int): 학력 코드 (FK)
-        edu_upper (int or None): 상위 학력 코드
-        deadline_date (date): 마감일 (NN)
-        last_updated_date (date): 최종 수정일 (NN)
-        job_codes (JSON): 직무 코드 목록 (JSON)
-        loc_codes (JSON): 지역 코드 목록 (JSON)
-        sal_code (int): 급여 코드 (FK)
-        poster_status (int): 공고 상태
-        poster_writer_user_id (str): 공고 작성자 ID (FK)
+    JobPosting 테이블에 대한 SQLAlchemy 모델 클래스
     """
-    __tablename__ = 'JobPosting'
+    __tablename__ = "JobPosting"
 
-    comp_id = Column(Integer, ForeignKey('Company.comp_id'), nullable=False, comment="회사 ID")
-    poster_id = Column(String(255), primary_key=True, comment="공고 ID")
-    poster_title = Column(String(255), nullable=False, comment="공고 제목")
-    poster_link = Column(String(255), comment="공고 링크")
-    job_sectors = Column(JSON, comment="직무 분야")
-    job_career = Column(String(255), comment="경력 조건")
-    job_education = Column(String(255), comment="학력 조건")
-    edu_code = Column(Integer, ForeignKey('EduCode.edu_code'), nullable=False, comment="학력 코드")
-    edu_upper = Column(Integer, comment="상위 학력 코드")
-    deadline_date = Column(Date, nullable=False, comment="마감일")
-    last_updated_date = Column(Date, nullable=False, default=date.today, onupdate=date.today, comment="최종 수정일")
-    job_codes = Column(JSON, nullable=False, comment="직무 코드 목록")
-    loc_codes = Column(JSON, nullable=False, comment="지역 코드 목록")
-    sal_code = Column(Integer, ForeignKey('SalCode.sal_code'), nullable=False, comment="급여 코드")
-    poster_status = Column(Integer, nullable=False, comment="공고 상태")
-    poster_writer_user_id = Column(String(255), ForeignKey('User.user_id'), nullable=False, comment="공고 작성자 ID")
+    comp_id = Column(Integer, ForeignKey("Company.comp_id"), nullable=False)
+    poster_id = Column(String(255), primary_key=True, nullable=False)
+    poster_title = Column(String(255), nullable=False)
+    poster_link = Column(String(255))
+    job_sectors = Column(String(255))
+    job_career = Column(String(255))
+    job_education = Column(String(255))
+    edu_code = Column(Integer, ForeignKey("EduCode.edu_code"), nullable=False)
+    edu_upper = Column(Integer)
+    deadline_date = Column(Date, nullable=False)
+    last_updated_date = Column(Date, nullable=False)
+    job_codes = Column(JSON, nullable=False)
+    loc_codes = Column(JSON, nullable=False)
+    sal_code = Column(Integer, ForeignKey("SalCode.sal_code"), nullable=False)
+    poster_status = Column(Integer, nullable=False)
+    poster_writer_user_id = Column(String(255), ForeignKey("User.user_id"), nullable=False)
+
+    company = relationship("Company", back_populates="postings")
+    edu = relationship("EduCode", back_populates="postings")
+    sal = relationship("SalCode", back_populates="postings")
+    writer = relationship("User", back_populates="written_postings")
 
     def to_dict(self):
-      return {
-          "comp_id": self.comp_id,
-          "poster_id": self.poster_id,
-          "poster_title": self.poster_title,
-          "poster_link": self.poster_link,
-          "job_sectors": self.job_sectors,
-          "job_career": self.job_career,
-          "job_education": self.job_education,
-          "edu_code": self.edu_code,
-          "edu_upper": self.edu_upper,
-          "deadline_date": self.deadline_date.isoformat() if self.deadline_date else None,
-          "last_updated_date": self.last_updated_date.isoformat() if self.last_updated_date else None,
-          "job_codes": self.job_codes,
-          "loc_codes": self.loc_codes,
-          "sal_code": self.sal_code,
-          "poster_status": self.poster_status,
-          "poster_writer_user_id": self.poster_writer_user_id
-      }
+        """JobPosting 객체를 딕셔너리로 변환합니다."""
+        return {
+            "comp_id": self.comp_id,
+            "poster_id": self.poster_id,
+            "poster_title": self.poster_title,
+            "poster_link": self.poster_link,
+            "job_sectors": self.job_sectors,
+            "job_career": self.job_career,
+            "job_education": self.job_education,
+            "edu_code": self.edu_code,
+            "edu_upper": self.edu_upper,
+            "deadline_date": self.deadline_date.isoformat() if self.deadline_date else None,
+            "last_updated_date": self.last_updated_date.isoformat() if self.last_updated_date else None,
+            "job_codes": self.job_codes,
+            "loc_codes": self.loc_codes,
+            "sal_code": self.sal_code,
+            "poster_status": self.poster_status,
+            "poster_writer_user_id": self.poster_writer_user_id,
+        }
 
-def create_job_posting(db: Session, comp_id: int, poster_id: str, poster_title: str, poster_link: str, job_sectors: list, job_career: str, job_education: str, edu_code: int, edu_upper: int, deadline_date: date, job_codes: list, loc_codes: list, sal_code: int, poster_status: int, poster_writer_user_id: str):
-    """새로운 JobPosting 레코드 생성"""
-    try:
-        db_job_posting = JobPosting(comp_id=comp_id, poster_id=poster_id, poster_title=poster_title, poster_link=poster_link, job_sectors=job_sectors, job_career=job_career, job_education=job_education, edu_code=edu_code, edu_upper=edu_upper, deadline_date=deadline_date, job_codes=job_codes, loc_codes=loc_codes, sal_code=sal_code, poster_status=poster_status, poster_writer_user_id=poster_writer_user_id)
-        db.add(db_job_posting)
-        db.commit()
-        db.refresh(db_job_posting)
-        return db_job_posting.to_dict(), "공고가 성공적으로 생성되었습니다."
-    except IntegrityError as e:
-        db.rollback()
-        if "Duplicate entry" in str(e):
-            return None, "이미 존재하는 공고 ID입니다."
-        return None, f"데이터베이스 무결성 오류: {str(e)}"
-    except Exception as e:
-        db.rollback()
-        return None, f"공고 생성 중 오류가 발생했습니다: {str(e)}"
 
-def get_job_posting(db: Session, poster_id: str):
-    """poster_id로 JobPosting 레코드 조회"""
-    try:
-        job_posting_obj = db.query(JobPosting).filter(JobPosting.poster_id == poster_id).first()
-        if job_posting_obj:
-            return job_posting_obj.to_dict(), "공고 조회 성공"
-        return None, "해당하는 공고가 없습니다."
-    except Exception as e:
-        return None, f"공고 조회 중 오류가 발생했습니다: {str(e)}"
+def get_job_postings(db: Session, page: int = 1, item_counts: int = 20) -> dict:
+    """JobPosting 목록을 조회하는 함수 (Pagination 적용)"""
+    offset = (page - 1) * item_counts
+    postings = db.query(JobPosting).offset(offset).limit(item_counts).all()
+    total_count = db.query(JobPosting).count()
+    return {
+        "postings": [posting.to_dict() for posting in postings],
+        "total_count": total_count,
+        "current_page": page,
+        "total_page": (total_count + item_counts - 1) // item_counts
+    }
 
-def get_job_posting_list(db: Session, page: int = 1, per_page: int = 20, pagination: bool = False):
-    """JobPosting 레코드 목록 조회 (페이지네이션 지원)"""
+def get_job_postings_sorted_by(db: Session, sort_criteria: dict, page: int = 1, item_counts: int = 20) -> dict:
+    """
+    특정 속성으로 정렬된 JobPosting 목록을 조회하는 함수 (Pagination 적용)
+    sort_criteria: 정렬 기준 딕셔너리. 예: {'deadline_date': {'level': 1, 'sorting_method': 0}, 'sal_code': {'level': 2, 'sorting_method': 1}}
+    """
     try:
         query = db.query(JobPosting)
-        if pagination:
-            job_postings = query.offset((page - 1) * per_page).limit(per_page).all()
-        else:
-            job_postings = query.all()
-        job_posting_list = [job_posting.to_dict() for job_posting in job_postings]
-        return job_posting_list, "공고 목록 조회 성공"
+        order_by_clauses = []
+
+        for column_name, sort_info in sort_criteria.items():
+            column = getattr(JobPosting, column_name, None)
+            if column is None:
+                return {"success": False, "message": f"Invalid column name: {column_name}"}
+
+            sorting_method = sort_info.get('sorting_method', 0) # 0: asc, 1: desc
+            if sorting_method == 0:
+                order_by_clauses.append(asc(column))
+            elif sorting_method == 1:
+                order_by_clauses.append(desc(column))
+            else:
+              return {"success": False, "message": f"Invalid sorting method for column: {column_name}, Value should be 0 or 1."}
+
+        query = query.order_by(*order_by_clauses)
+        offset = (page - 1) * item_counts
+        postings = query.offset(offset).limit(item_counts).all()
+        total_count = db.query(JobPosting).count()
+
+        return {
+            "success": True,
+            "postings": [posting.to_dict() for posting in postings],
+            "total_count": total_count,
+            "current_page": page,
+            "total_page": (total_count + item_counts - 1) // item_counts
+        }
     except Exception as e:
-        return None, f"공고 목록 조회 중 오류가 발생했습니다: {str(e)}"
+        return {"success": False, "message": str(e)}
+
+def get_available_job_postings_sorted_by(db: Session, sort_criteria: dict, page: int = 1, item_counts: int = 20) -> dict:
+    """
+    마감일자가 지나지 않았거나, 지났더라도 무기한 연장된(poster_status == 0) JobPosting 목록을 정렬하여 조회하는 함수 (Pagination 적용)
+
+    sort_criteria: 정렬 기준 딕셔너리. get_job_postings_sorted_by 와 동일 형식.
+    """
+    try:
+        query = db.query(JobPosting).filter(
+            and_(
+                JobPosting.poster_status < 2, # 2보다 작은 status만 선택
+                # 혹은 status가 0이면서 마감일자가 과거인 경우 (무기한 연장)
+                (JobPosting.poster_status == 0) & (JobPosting.deadline_date < date.today())
+            )
+        )
+
+        order_by_clauses = []
+
+        for column_name, sort_info in sort_criteria.items():
+            column = getattr(JobPosting, column_name, None)
+            if column is None:
+                return {"success": False, "message": f"Invalid column name: {column_name}"}
+
+            sorting_method = sort_info.get('sorting_method', 0)  # 0: asc, 1: desc
+            if sorting_method == 0:
+                order_by_clauses.append(asc(column))
+            elif sorting_method == 1:
+                order_by_clauses.append(desc(column))
+            else:
+              return {"success": False, "message": f"Invalid sorting method for column: {column_name}, Value should be 0 or 1."}
+
+        query = query.order_by(*order_by_clauses)
+
+        offset = (page - 1) * item_counts
+        postings = query.offset(offset).limit(item_counts).all()
+        total_count = query.count() # 필터링 된 결과에 대한 count를 구해야함.
+
+        return {
+            "success": True,
+            "postings": [posting.to_dict() for posting in postings],
+            "total_count": total_count,
+            "current_page": page,
+            "total_page": (total_count + item_counts - 1) // item_counts
+        }
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
+def create_job_posting(db: Session, comp_id: int, poster_id: str, poster_title: str, poster_link: str = None, job_sectors: str = None, job_career: str = None, job_education: str = None, edu_code: int, edu_upper: int = None, deadline_date: date = None, job_codes: list = None, loc_codes: list = None, sal_code: int, poster_status: int = 1, poster_writer_user_id: str) -> dict:
+    """새로운 JobPosting을 생성하는 함수"""
+    try:
+        now = date.today()
+        new_posting = JobPosting(comp_id=comp_id, poster_id=poster_id, poster_title=poster_title, poster_link=poster_link, job_sectors=job_sectors, job_career=job_career, job_education=job_education, edu_code=edu_code, edu_upper=edu_upper, deadline_date=deadline_date, last_updated_date=now, job_codes=job_codes, loc_codes=loc_codes, sal_code=sal_code, poster_status=poster_status, poster_writer_user_id=poster_writer_user_id)
+        db.add(new_posting)
+        db.commit()
+        db.refresh(new_posting)
+        return {"success": True, "posting": new_posting.to_dict()}
+    except Exception as e:
+        db.rollback()
+        return {"success": False, "error": str(e)}
+
+def get_job_posting_by_id(db: Session, poster_id_input: str) -> dict:
+    """poster_id로 JobPosting 정보를 가져오는 함수"""
+    posting = db.query(JobPosting).filter(JobPosting.poster_id == poster_id_input).first()
+    if posting:
+        return {"success": True, "posting": posting.to_dict()}
+    else:
+        return {"success": False, "message": "JobPosting not found"}
+
+def update_job_posting(db: Session, poster_id_input: str, new_comp_id: int = None, new_poster_title: str = None, new_poster_link: str = None, new_job_sectors: str = None, new_job_career: str = None, new_job_education: str = None, new_edu_code: int = None, new_edu_upper: int = None, new_deadline_date: date = None, new_job_codes: list = None, new_loc_codes: list = None, new_sal_code: int = None) -> dict:
+    """기존 JobPosting 정보를 수정하는 함수"""
+    posting = db.query(JobPosting).filter(JobPosting.poster_id == poster_id_input).first()
+    if posting:
+        try:
+            if new_comp_id is not None: posting.comp_id = new_comp_id
+            if new_poster_title is not None: posting.poster_title = new_poster_title
+            if new_poster_link is not None: posting.poster_link = new_poster_link
+            if new_job_sectors is not None: posting.job_sectors = new_job_sectors
+            if new_job_career is not None: posting.job_career = new_job_career
+            if new_job_education is not None: posting.job_education = new_job_education
+            if new_edu_code is not None: posting.edu_code = new_edu_code
+            if new_edu_upper is not None: posting.edu_upper = new_edu_upper
+            if new_deadline_date is not None: posting.deadline_date = new_deadline_date
+            if new_job_codes is not None: posting.job_codes = new_job_codes
+            if new_loc_codes is not None: posting.loc_codes = new_loc_codes
+            if new_sal_code is not None: posting.sal_code = new_sal_code
+            posting.last_updated_date = date.today()
+            db.commit()
+            return {"success": True, "posting": posting.to_dict()}
+        except Exception as e:
+            db.rollback()
+            return {"success": False, "error": str(e)}
+    else:
+        return {"success": False, "message": "JobPosting not found"}
     
-def update_job_posting(db: Session, poster_id: str, comp_id: int = None, poster_title: str = None, poster_link: str = None, job_sectors: list = None, job_career: str = None, job_education: str = None, edu_code: int = None, edu_upper: int = None, deadline_date: date = None, job_codes: list = None, loc_codes: list = None, sal_code: int = None, poster_status: int = None):
-    """
-    JobPosting 레코드 업데이트
-
-    Args:
-        db (Session): 데이터베이스 세션
-        poster_id (str): 수정할 공고 ID (필수)
-        comp_id (int, optional): 회사 ID
-        poster_title (str, optional): 공고 제목
-        poster_link (str, optional): 공고 링크
-        job_sectors (list, optional): 직무 분야
-        job_career (str, optional): 경력 조건
-        job_education (str, optional): 학력 조건
-        edu_code (int, optional): 학력 코드
-        edu_upper (int, optional): 상위 학력 코드
-        deadline_date (date, optional): 마감일
-        job_codes (list, optional): 직무 코드 목록
-        loc_codes (list, optional): 지역 코드 목록
-        sal_code (int, optional): 급여 코드
-        poster_status (int, optional): 공고 상태
-
-    Returns:
-        tuple: (dict, str) - (업데이트된 데이터, 메시지) 또는 (None, 에러 메시지)
-    """
-    try:
-        job_posting_obj = db.query(JobPosting).filter(JobPosting.poster_id == poster_id).first()
-        if job_posting_obj:
-            if comp_id is not None: job_posting_obj.comp_id = comp_id
-            if poster_title is not None: job_posting_obj.poster_title = poster_title
-            if poster_link is not None: job_posting_obj.poster_link = poster_link
-            if job_sectors is not None: job_posting_obj.job_sectors = job_sectors
-            if job_career is not None: job_posting_obj.job_career = job_career
-            if job_education is not None: job_posting_obj.job_education = job_education
-            if edu_code is not None: job_posting_obj.edu_code = edu_code
-            if edu_upper is not None: job_posting_obj.edu_upper = edu_upper
-            if deadline_date is not None: job_posting_obj.deadline_date = deadline_date
-            if job_codes is not None: job_posting_obj.job_codes = job_codes
-            if loc_codes is not None: job_posting_obj.loc_codes = loc_codes
-            if sal_code is not None: job_posting_obj.sal_code = sal_code
-            if poster_status is not None: job_posting_obj.poster_status = poster_status
+def delete_job_posting(db: Session, poster_id_input: str) -> dict:
+    """기존 JobPosting 정보를 삭제하는 함수"""
+    posting = db.query(JobPosting).filter(JobPosting.poster_id == poster_id_input).first()
+    if posting:
+        try:
+            db.delete(posting)
             db.commit()
-            db.refresh(job_posting_obj)
-            return job_posting_obj.to_dict(), "공고가 성공적으로 수정되었습니다."
-        return None, "해당하는 공고가 없습니다."
-    except IntegrityError as e:
-        db.rollback()
-        return None, f"데이터베이스 무결성 오류: {str(e)}"
-    except Exception as e:
-        db.rollback()
-        return None, f"공고 수정 중 오류가 발생했습니다: {str(e)}"
-
-def delete_job_posting(db: Session, poster_id: str):
-    """
-    JobPosting 레코드 삭제
-
-    Args:
-        db (Session): 데이터베이스 세션
-        poster_id (str): 삭제할 공고 ID
-
-    Returns:
-        tuple: (None, str) - (None, 메시지)
-    """
-    try:
-        job_posting_obj = db.query(JobPosting).filter(JobPosting.poster_id == poster_id).first()
-        if job_posting_obj:
-            db.delete(job_posting_obj)
-            db.commit()
-            return None, "공고가 성공적으로 삭제되었습니다."
-        return None, "해당하는 공고가 없습니다."
-    except Exception as e:
-        db.rollback()
-        return None, f"공고 삭제 중 오류가 발생했습니다: {str(e)}"
+            return {"success": True}
+        except Exception as e:
+            db.rollback()
+            return {"success": False, "error": str(e)}
+    else:
+        return {"success": False, "message": "JobPosting not found"}

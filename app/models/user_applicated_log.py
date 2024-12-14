@@ -1,109 +1,100 @@
 # models/user_applicated_log.py
-import enum
-from sqlalchemy import Column, String, ForeignKey, DateTime, Integer, Enum
-from sqlalchemy.orm import declarative_base, Session
-from sqlalchemy.exc import IntegrityError
+
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy.orm import declarative_base, relationship, Session
 from datetime import datetime
+from sqlalchemy import and_
 
 Base = declarative_base()
 
-class ApplicationStatus(enum.Enum):
-    APPLIED = 0  # 지원
-    CANCELLED = 1  # 취소
-    ACCEPTED = 2 # 접수됨
+class ApplicateAction(enum.Enum):
+    CREATE = 0 # 생성
+    UPDATE = 1 # 수정
+    DELETE = 2 # 삭제
 
 class UserApplicatedLog(Base):
-    """
-    UserApplicatedLog 테이블 모델
+    """UserApplicatedLog 테이블에 대한 SQLAlchemy 모델 클래스"""
+    __tablename__ = "UserApplicatedLog"
 
-    Attributes:
-        application_log_id (int): 지원 로그 ID (PK, Auto Increment)
-        application_id (int): 지원 ID (FK, UserApplicated 테이블 참조)
-        applicated_at (datetime): 지원/취소 시간
-        user_id (str): 사용자 ID (FK, User 테이블 참조)
-        poster_id (str): 공고 ID (FK, JobPosting 테이블 참조)
-        status (ApplicationStatus): 지원 상태 (Enum)
-    """
-    __tablename__ = 'UserApplicatedLog'
+    application_log_id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    application_id = Column(Integer, ForeignKey("UserApplicated.application_id"), nullable=False)
+    applicated_at = Column(DateTime, nullable=False, default=datetime.utcnow) #default 추가
+    user_id = Column(String(255), ForeignKey("User.user_id"), nullable=False)
+    poster_id = Column(String(255), ForeignKey("JobPosting.poster_id"), nullable=False)
+    applicate_action = Column(ENUM(ApplicateAction), nullable=False)
 
-    application_log_id = Column(Integer, primary_key=True, autoincrement=True, comment="지원 로그 ID")
-    application_id = Column(Integer, ForeignKey('UserApplicated.application_id'), nullable=False, comment="지원 ID")
-    applicated_at = Column(DateTime, default=datetime.utcnow, comment="지원/취소 시간")
-    user_id = Column(String(255), ForeignKey('User.user_id'), nullable=False, comment="사용자 ID")
-    poster_id = Column(String(255), ForeignKey('JobPosting.poster_id'), nullable=False, comment="공고 ID")
-    status = Column(Enum(ApplicationStatus), nullable=False, comment="지원 상태")
+    user_applicated = relationship("UserApplicated", back_populates="logs")
+    user = relationship("User", back_populates="applicated_logs")
+    job_posting = relationship("JobPosting", back_populates="applicated_logs")
+    
 
     def to_dict(self):
+        """UserApplicatedLog 객체를 딕셔너리로 변환합니다."""
         return {
             "application_log_id": self.application_log_id,
             "application_id": self.application_id,
-            "applicated_at": self.applicated_at.isoformat() if self.applicated_at else None,
+            "applicated_at": self.applicated_at.isoformat() if self.applicated_at else None, # DateTime 직렬화 처리 추가
             "user_id": self.user_id,
             "poster_id": self.poster_id,
-            "status": self.status.value # Enum value를 int로 반환
+            "applicate_action": self.applicate_action.value if self.applicate_action else None
         }
 
-def create_user_applicated_log(db: Session, application_id: int, user_id: str, poster_id: str, status: ApplicationStatus):
-    """새로운 UserApplicatedLog 레코드 생성"""
+def get_user_applicated_logs(db: Session, page: int = 1, item_counts: int = 20) -> dict:
+    """UserApplicatedLog 목록을 조회하는 함수 (Pagination 적용)"""
+    offset = (page - 1) * item_counts
+    total_count = db.query(UserApplicatedLog).count()
+    logs = db.query(UserApplicatedLog).offset(offset).limit(item_counts).all()
+    return {
+        "success": True,
+        "user_applicated_logs": [log.to_dict() for log in logs],
+        "total_count": total_count,
+        "current_page": page,
+        "total_page": (total_count + item_counts - 1) // item_counts
+    }
+
+def create_user_applicated_log(db: Session, application_id: int, user_id: str, poster_id: str, applicate_action: ApplicateAction) -> dict:
+    """새로운 UserApplicatedLog를 생성하는 함수"""
     try:
-        db_user_applicated_log = UserApplicatedLog(
-            application_id=application_id,
-            user_id=user_id,
-            poster_id=poster_id,
-            status=status
-        )
-        db.add(db_user_applicated_log)
+        new_log = UserApplicatedLog(application_id=application_id, user_id=user_id, poster_id=poster_id, applicate_action=applicate_action)
+        db.add(new_log)
         db.commit()
-        db.refresh(db_user_applicated_log)
-        return db_user_applicated_log.to_dict(), "지원 로그가 기록되었습니다."
-    except IntegrityError as e:
-        db.rollback()
-        return None, f"데이터베이스 무결성 오류 (FK 제약 조건 위반): {str(e)}"
+        db.refresh(new_log)
+        return {"success": True, "user_applicated_log": new_log.to_dict()}
     except Exception as e:
         db.rollback()
-        return None, f"지원 로그 기록 중 오류가 발생했습니다: {str(e)}"
+        return {"success": False, "error": str(e)}
 
-def get_user_applicated_log(db: Session, application_log_id: int):
-    """application_log_id로 UserApplicatedLog 레코드 조회"""
-    try:
-        user_applicated_log_obj = db.query(UserApplicatedLog).filter(UserApplicatedLog.application_log_id == application_log_id).first()
-        if user_applicated_log_obj:
-            return user_applicated_log_obj.to_dict(), "지원 로그 조회 성공"
-        return None, "해당 지원 로그가 없습니다."
-    except Exception as e:
-        return None, f"지원 로그 조회 중 오류가 발생했습니다: {str(e)}"
+def get_user_applicated_log_by_id(db: Session, application_log_id_input: int) -> dict:
+    """application_log_id로 UserApplicatedLog 정보를 가져오는 함수"""
+    log = db.query(UserApplicatedLog).filter(UserApplicatedLog.application_log_id == application_log_id_input).first()
+    if log:
+        return {"success": True, "user_applicated_log": log.to_dict()}
+    else:
+        return {"success": False, "message": "UserApplicatedLog not found"}
 
-def get_user_applicated_log_list_by_application_id(db: Session, application_id: int):
-    """application_id로 UserApplicatedLog 레코드 목록 조회"""
-    try:
-        user_applicated_log_list = db.query(UserApplicatedLog).filter(UserApplicatedLog.application_id == application_id).all()
-        if user_applicated_log_list:
-            result = [log.to_dict() for log in user_applicated_log_list]
-            return result, f"해당 application_id({application_id})의 지원 로그 목록 조회 성공"
-        return None, f"해당 application_id({application_id})의 지원 로그가 없습니다."
-    except Exception as e:
-        return None, f"지원 로그 목록 조회 중 오류가 발생했습니다: {str(e)}"
+def delete_user_applicated_log(db: Session, application_log_id_input: int) -> dict:
+    """기존 UserApplicatedLog 정보를 삭제하는 함수"""
+    log = db.query(UserApplicatedLog).filter(UserApplicatedLog.application_log_id == application_log_id_input).first()
+    if log:
+        try:
+            db.delete(log)
+            db.commit()
+            return {"success": True}
+        except Exception as e:
+            db.rollback()
+            return {"success": False, "error": str(e)}
+    else:
+        return {"success": False, "message": "UserApplicatedLog not found"}
 
-def get_user_applicated_log_list_by_user_id(db: Session, user_id: str):
-    """user_id로 UserApplicatedLog 레코드 목록 조회"""
-    try:
-        user_applicated_log_list = db.query(UserApplicatedLog).filter(UserApplicatedLog.user_id == user_id).all()
-        if user_applicated_log_list:
-            result = [log.to_dict() for log in user_applicated_log_list]
-            return result, f"해당 user_id({user_id})의 지원 로그 목록 조회 성공"
-        return None, f"해당 user_id({user_id})의 지원 로그가 없습니다."
-    except Exception as e:
-        return None, f"지원 로그 목록 조회 중 오류가 발생했습니다: {str(e)}"
-
-def get_user_applicated_log_list_by_poster_id(db: Session, poster_id: str):
-    """poster_id로 UserApplicatedLog 레코드 목록 조회"""
-    try:
-        user_applicated_log_list = db.query(UserApplicatedLog).filter(UserApplicatedLog.poster_id == poster_id).all()
-        if user_applicated_log_list:
-            result = [log.to_dict() for log in user_applicated_log_list]
-            return result, f"해당 poster_id({poster_id})의 지원 로그 목록 조회 성공"
-        return None, f"해당 poster_id({poster_id})의 지원 로그가 없습니다."
-    except Exception as e:
-        return None, f"지원 로그 목록 조회 중 오류가 발생했습니다: {str(e)}"
-
-# 삭제 기능은 이력 테이블이므로 일반적으로 필요하지 않으므로 생략
+def get_user_applicated_logs_by_app_id(db: Session, application_id_input: int, page: int = 1, item_counts: int = 20) -> dict:
+    """application_id 로 UserApplicatedLog 목록을 조회하는 함수 (Pagination 적용)"""
+    offset = (page - 1) * item_counts
+    total_count = db.query(UserApplicatedLog).filter(UserApplicatedLog.application_id == application_id_input).count()
+    logs = db.query(UserApplicatedLog).filter(UserApplicatedLog.application_id == application_id_input).offset(offset).limit(item_counts).all()
+    return {
+        "success": True,
+        "user_applicated_logs": [log.to_dict() for log in logs],
+        "total_count": total_count,
+        "current_page": page,
+        "total_page": (total_count + item_counts - 1) // item_counts
+    }

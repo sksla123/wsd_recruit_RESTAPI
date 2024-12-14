@@ -1,115 +1,102 @@
 # models/user_applicated.py
-from sqlalchemy import Column, String, ForeignKey, Integer, Text
-from sqlalchemy.orm import declarative_base, Session
-from sqlalchemy.exc import IntegrityError
+
+from sqlalchemy import Column, Integer, String, ForeignKey, Text
+from sqlalchemy.orm import declarative_base, relationship, Session
+from sqlalchemy.dialects.mysql import ENUM
+import enum
 
 Base = declarative_base()
 
+class ApplicationStatus(enum.Enum):
+    APPLIED = 0     # 지원
+    CANCELLED = 1   # 취소
+    ACCEPTED = 2    # 접수됨
+    REJECTED = 3    # 거절됨
+
+
 class UserApplicated(Base):
-    """
-    UserApplicated 테이블 모델
+    """UserApplicated 테이블에 대한 SQLAlchemy 모델 클래스"""
+    __tablename__ = "UserApplicated"
 
-    Attributes:
-        application_id (int): 지원 ID (PK, Auto Increment)
-        user_id (str): 사용자 ID (FK, User 테이블 참조)
-        poster_id (str): 공고 ID (FK, JobPosting 테이블 참조)
-        application (str): 지원 내용 (TEXT)
-        application_status (int): 지원 상태 (정수형)
-    """
-    __tablename__ = 'UserApplicated'
+    application_id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
+    user_id = Column(String(255), ForeignKey("User.user_id"), nullable=False)
+    poster_id = Column(String(255), ForeignKey("JobPosting.poster_id"), nullable=False)
+    application = Column(Text)
+    application_status = Column(ENUM(ApplicationStatus), nullable=False) # enum 타입으로 변경
 
-    application_id = Column(Integer, primary_key=True, autoincrement=True, comment="지원 ID")
-    user_id = Column(String(255), ForeignKey('User.user_id'), nullable=False, comment="사용자 ID")
-    poster_id = Column(String(255), ForeignKey('JobPosting.poster_id'), nullable=False, comment="공고 ID")
-    application = Column(Text, comment="지원 내용")
-    application_status = Column(Integer, comment="지원 상태")
+    user = relationship("User", back_populates="applications")
+    job_posting = relationship("JobPosting", back_populates="user_applications")
 
     def to_dict(self):
+        """UserApplicated 객체를 딕셔너리로 변환합니다."""
         return {
             "application_id": self.application_id,
             "user_id": self.user_id,
             "poster_id": self.poster_id,
             "application": self.application,
-            "application_status": self.application_status
+            "application_status": self.application_status.value if self.application_status else None, # enum 값인 value를 가져오도록 수정. None 처리 추가
         }
 
-def create_user_applicated(db: Session, user_id: str, poster_id: str, application: str = None, application_status: int = None):
-    """새로운 UserApplicated 레코드 생성"""
+def get_user_applicateds(db: Session, page: int = 1, item_counts: int = 20) -> dict:
+    """UserApplicated 목록을 조회하는 함수 (Pagination 적용)"""
+    offset = (page - 1) * item_counts
+    total_count = db.query(UserApplicated).count()
+    applicateds = db.query(UserApplicated).offset(offset).limit(item_counts).all()
+    return {
+        "success": True,
+        "user_applicateds": [applicated.to_dict() for applicated in applicateds],
+        "total_count": total_count,
+        "current_page": page,
+        "total_page": (total_count + item_counts - 1) // item_counts
+    }
+
+def create_user_applicated(db: Session, user_id: str, poster_id: str, application: str, application_status: ApplicationStatus) -> dict:
+    """새로운 UserApplicated를 생성하는 함수"""
     try:
-        db_user_applicated = UserApplicated(user_id=user_id, poster_id=poster_id, application=application, application_status=application_status)
-        db.add(db_user_applicated)
+        new_applicated = UserApplicated(user_id=user_id, poster_id=poster_id, application=application, application_status=application_status)
+        db.add(new_applicated)
         db.commit()
-        db.refresh(db_user_applicated)
-        return db_user_applicated.to_dict(), "지원이 완료되었습니다."
-    except IntegrityError as e:
-        db.rollback()
-        return None, f"데이터베이스 무결성 오류 (FK 제약 조건 위반): {str(e)}" # 중복 지원은 이제 DB단에서 막지 않음 (application_id가 PK 이므로)
+        db.refresh(new_applicated)
+        return {"success": True, "user_applicated": new_applicated.to_dict()}
     except Exception as e:
         db.rollback()
-        return None, f"지원 처리 중 오류가 발생했습니다: {str(e)}"
+        return {"success": False, "error": str(e)}
+    
+def get_user_applicated_by_id(db: Session, application_id_input: int) -> dict:
+    """application_id로 UserApplicated 정보를 가져오는 함수"""
+    applicated = db.query(UserApplicated).filter(UserApplicated.application_id == application_id_input).first()
+    if applicated:
+        return {"success": True, "user_applicated": applicated.to_dict()}
+    else:
+        return {"success": False, "message": "UserApplicated not found"}
 
-def get_user_applicated(db: Session, application_id: int):
-    """application_id로 UserApplicated 레코드 조회"""
-    try:
-        user_applicated_obj = db.query(UserApplicated).filter(UserApplicated.application_id == application_id).first()
-        if user_applicated_obj:
-            return user_applicated_obj.to_dict(), "지원 정보 조회 성공"
-        return None, "해당 지원 내역이 없습니다."
-    except Exception as e:
-        return None, f"지원 정보 조회 중 오류가 발생했습니다: {str(e)}"
-
-def get_user_applicated_list_by_user_id(db: Session, user_id: str):
-    """user_id로 UserApplicated 레코드 목록 조회 (사용자의 지원 목록)"""
-    try:
-        user_applicated_list = db.query(UserApplicated).filter(UserApplicated.user_id == user_id).all()
-        if user_applicated_list:
-            result = [user_applicated.to_dict() for user_applicated in user_applicated_list]
-            return result, f"해당 user_id({user_id})의 지원 목록 조회 성공"
-        return None, f"해당 user_id({user_id})의 지원 내역이 없습니다."
-    except Exception as e:
-        return None, f"지원 목록 조회 중 오류가 발생했습니다: {str(e)}"
-
-def get_user_applicated_list_by_poster_id(db: Session, poster_id: str):
-    """poster_id로 UserApplicated 레코드 목록 조회 (공고에 지원한 사용자 목록)"""
-    try:
-        user_applicated_list = db.query(UserApplicated).filter(UserApplicated.poster_id == poster_id).all()
-        if user_applicated_list:
-            result = [user_applicated.to_dict() for user_applicated in user_applicated_list]
-            return result, f"해당 poster_id({poster_id})에 지원한 사용자 목록 조회 성공"
-        return None, f"해당 poster_id({poster_id})에 지원한 사용자가 없습니다."
-    except Exception as e:
-        return None, f"지원 목록 조회 중 오류가 발생했습니다: {str(e)}"
-
-def update_user_applicated(db: Session, application_id: int, application: str = None, application_status: int = None):
-    """UserApplicated 레코드 업데이트 (지원 내용 수정)"""
-    try:
-        user_applicated_obj = db.query(UserApplicated).filter(UserApplicated.application_id == application_id).first()
-        if user_applicated_obj:
-            if application is not None:
-                user_applicated_obj.application = application
-            if application_status is not None:
-                user_applicated_obj.application_status = application_status
+def update_user_applicated(db: Session, application_id_input: int, new_application: str = None, new_application_status: ApplicationStatus = None) -> dict:
+    """기존 UserApplicated 정보를 수정하는 함수"""
+    applicated = db.query(UserApplicated).filter(UserApplicated.application_id == application_id_input).first()
+    if applicated:
+        try:
+            if new_application is not None:
+                applicated.application = new_application
+            if new_application_status is not None:
+                applicated.application_status = new_application_status
             db.commit()
-            db.refresh(user_applicated_obj)
-            return user_applicated_obj.to_dict(), "지원이 수정되었습니다."
-        return None, "해당 지원 내역이 없습니다."
-    except Exception as e:
-        db.rollback()
-        return None, f"지원 수정 중 오류가 발생했습니다: {str(e)}"
+            return {"success": True, "user_applicated": applicated.to_dict()}
+        except Exception as e:
+            db.rollback()
+            return {"success": False, "error": str(e)}
+    else:
+        return {"success": False, "message": "UserApplicated not found"}
 
-
-
-def delete_user_applicated(db: Session, application_id: int):
-    """UserApplicated 레코드 삭제 (지원 취소)"""
-    try:
-        user_applicated_obj = db.query(UserApplicated).filter(UserApplicated.application_id == application_id).first()
-        if user_applicated_obj:
-            db.delete(user_applicated_obj)
+def delete_user_applicated(db: Session, application_id_input: int) -> dict:
+    """기존 UserApplicated 정보를 삭제하는 함수"""
+    applicated = db.query(UserApplicated).filter(UserApplicated.application_id == application_id_input).first()
+    if applicated:
+        try:
+            db.delete(applicated)
             db.commit()
-            return None, "지원이 성공적으로 취소되었습니다."
-        return None, "해당 지원 내역이 없습니다."
-    except Exception as e:
-        db.rollback()
-        return None, f"지원 취소 중 오류가 발생했습니다: {str(e)}"
-
-# user_id 혹은 poster_id 만으로 삭제하는 함수는 일반적으로 필요하지 않으므로 생략합니다.
+            return {"success": True}
+        except Exception as e:
+            db.rollback()
+            return {"success": False, "error": str(e)}
+    else:
+        return {"success": False, "message": "UserApplicated not found"}

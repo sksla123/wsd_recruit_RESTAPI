@@ -1,152 +1,178 @@
 # models/company_group.py
+
 from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import declarative_base
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+
+from sqlalchemy import create_engine
 
 Base = declarative_base()
 
 class CompanyGroup(Base):
     """
-    CompanyGroup 테이블 모델
-
-    Attributes:
-        group_id (int): 그룹 ID (PK)
-        group_name (str): 그룹 이름
+    CompanyGroup 테이블에 대한 SQLAlchemy 모델 클래스
     """
-    __tablename__ = 'CompanyGroup'
+    __tablename__ = "CompanyGroup"
 
     group_id = Column(Integer, primary_key=True, autoincrement=True)
     group_name = Column(String(255))
 
     def to_dict(self):
-        """
-        모델 객체를 딕셔너리로 변환
-
-        Returns:
-            dict: 모델의 데이터를 담은 딕셔너리
-        """
         return {
             "group_id": self.group_id,
             "group_name": self.group_name
         }
 
-def create_company_group(db: Session, group_name: str):
+def get_company_groups(db: Session, page: int = 1, item_counts: int = 20) -> dict:
     """
-    새로운 CompanyGroup 레코드를 생성
+    CompanyGroup 목록을 조회하는 함수 (Pagination 적용)
+    """
+    offset = (page - 1) * item_counts
+    groups = db.query(CompanyGroup).offset(offset).limit(item_counts).all()
+    total_count = db.query(CompanyGroup).count()
+    return {
+        "groups": [group.to_dict() for group in groups],
+        "total_count": total_count,
+        "current_page": page,
+        "total_page": (total_count + item_counts - 1) // item_counts # 총 페이지 수 계산
+    }
 
-    Args:
-        db (Session): 데이터베이스 세션
-        group_name (str): 생성할 그룹 이름
-
-    Returns:
-        tuple: (dict, str) - (생성된 데이터, 메시지) 또는 (None, 에러 메시지)
+def create_company_group(db: Session, group_name: str) -> dict:
+    """
+    새로운 CompanyGroup을 생성하는 함수
     """
     try:
-        db_group = CompanyGroup(group_name=group_name)
-        db.add(db_group)
+        new_group = CompanyGroup(group_name=group_name)
+        db.add(new_group)
         db.commit()
-        db.refresh(db_group)
-        return db_group.to_dict(), "그룹이 성공적으로 생성되었습니다."
-    except IntegrityError:
-        db.rollback()
-        return None, "이미 존재하는 그룹 이름입니다."
+        db.refresh(new_group)
+        return {"success": True, "group": new_group.to_dict()}
     except Exception as e:
         db.rollback()
-        return None, f"그룹 생성 중 오류가 발생했습니다: {str(e)}"
-
-def get_company_group(db: Session, group_id: int):
+        return {"success": False, "error": str(e)}
+        
+def get_company_group_by_id(db: Session, group_id: int) -> dict:
     """
-    group_id로 CompanyGroup 레코드 조회
-
-    Args:
-        db (Session): 데이터베이스 세션
-        group_id (int): 조회할 그룹 ID
-
-    Returns:
-        tuple: (dict, str) - (조회된 데이터, 메시지) 또는 (None, 메시지)
+    group_id로 CompanyGroup 정보를 가져오는 함수
     """
+    group = db.query(CompanyGroup).filter(CompanyGroup.group_id == group_id).first()
+    if group:
+        return {"success": True, "group": group.to_dict()}
+    else:
+        return {"success": False, "message": "Group not found"}
+
+def update_company_group(db: Session, group_id: int, new_group_name: str) -> dict:
+    """
+    기존 CompanyGroup 정보를 수정하는 함수
+    """
+    group = db.query(CompanyGroup).filter(CompanyGroup.group_id == group_id).first()
+    if group:
+        try:
+            group.group_name = new_group_name
+            db.commit()
+            return {"success": True, "group": group.to_dict()}
+        except Exception as e:
+            db.rollback()
+            return {"success": False, "error": str(e)}
+    else:
+        return {"success": False, "message": "Group not found"}
+
+def delete_company_group(db: Session, group_id: int) -> dict:
+    """
+    기존 CompanyGroup 정보를 삭제하는 함수
+    """
+    group = db.query(CompanyGroup).filter(CompanyGroup.group_id == group_id).first()
+    if group:
+        try:
+            db.delete(group)
+            db.commit()
+            return {"success": True}
+        except Exception as e:
+            db.rollback()
+            return {"success": False, "error": str(e)}
+    else:
+        return {"success": False, "message": "Group not found"}
+    
+
+if __name__ == "__main__":
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from dotenv import load_dotenv
+    import os
+
+    load_dotenv()
+
+    class Config:
+        # ... (기존 Config 클래스 내용 동일)
+        MySQL_DB_URL = os.getenv('MySQL_DB_URL')
+        MySQL_DB_PORT = int(os.getenv('MySQL_DB_PORT'))
+        MySQL_DB_USER = os.getenv('MySQL_DB_USER')
+        MySQL_DB_PASSWORD = os.getenv('MySQL_DB_PASSWORD')
+        MySQL_DB_NAME = os.getenv('MySQL_DB_NAME')
+        SQLALCHEMY_DATABASE_URI = f"mysql+pymysql://{MySQL_DB_USER}:{MySQL_DB_PASSWORD}@{MySQL_DB_URL}:{MySQL_DB_PORT}/{MySQL_DB_NAME}?charset=utf8mb4"
+        SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+    config = Config()
+
+    engine = create_engine(config.SQLALCHEMY_DATABASE_URI, echo=True)
+
+    Base.metadata.create_all(engine)
+
+    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+    db = SessionLocal()
+
+    test_results = [] # 테스트 결과를 저장할 리스트
+
     try:
-        group = db.query(CompanyGroup).filter(CompanyGroup.group_id == group_id).first()
-        if group:
-          return group.to_dict(), "그룹 조회 성공"
-        return None, "해당하는 그룹이 없습니다."
+        # 테스트 로직
+        print("--- CREATE TEST ---")
+        create_result = create_company_group(db, "Test Group 1")
+        print(create_result)
+        test_results.append(create_result["success"]) #결과 추가
+
+        print("--- GET ALL TEST ---")
+        get_all_result = get_company_groups(db)
+        print(get_all_result)
+        test_results.append(get_all_result.get("success", True)) #get all은 예외가 없으므로 success 키가 없어도 True로 간주
+
+        if create_result["success"]:
+            created_group_id = create_result["group"]["group_id"]
+
+            print("--- GET BY ID TEST ---")
+            get_by_id_result = get_company_group_by_id(db, created_group_id)
+            print(get_by_id_result)
+            test_results.append(get_by_id_result["success"])
+
+            print("--- UPDATE TEST ---")
+            update_result = update_company_group(db, created_group_id, "Updated Test Group")
+            print(update_result)
+            test_results.append(update_result["success"])
+
+            print("--- DELETE TEST ---")
+            delete_result = delete_company_group(db, created_group_id)
+            print(delete_result)
+            test_results.append(delete_result["success"])
+
+            print("--- GET ALL TEST(after DELETE) ---")
+            get_all_result_after_delete = get_company_groups(db)
+            print(get_all_result_after_delete)
+            test_results.append(get_all_result_after_delete.get("success", True))
+
+        else:
+            print("그룹 생성 실패로 나머지 테스트 생략")
+
     except Exception as e:
-        return None, f"그룹 조회 중 오류가 발생했습니다: {str(e)}"
+        print(f"테스트 중 오류 발생: {e}")
+        test_results.append(False) # 오류 발생 시 테스트 실패로 처리
+    finally:
+        db.close()
 
-def get_company_group_list(db: Session, page: int = 1, per_page: int = 20, pagination: bool = False):
-    """
-    CompanyGroup 레코드 목록 조회 (페이지네이션 지원)
-
-    Args:
-        db (Session): 데이터베이스 세션
-        page (int): 페이지 번호 (기본값: 1)
-        per_page (int): 페이지당 항목 수 (기본값: 20)
-        pagination (bool): 페이지네이션 사용 여부 (기본값: False)
-
-    Returns:
-        tuple: (list, str) - (조회된 데이터 목록, 메시지) 또는 (None, 메시지)
-    """
-    try:
-      query = db.query(CompanyGroup)
-
-      if pagination:
-          groups = query.offset((page - 1) * per_page).limit(per_page).all()
-      else:
-          groups = query.all()
-
-      group_list = [group.to_dict() for group in groups]
-      return group_list, "그룹 목록 조회 성공"
-    except Exception as e:
-        return None, f"그룹 목록 조회 중 오류가 발생했습니다: {str(e)}"
-
-
-def update_company_group(db: Session, group_id: int, new_group_name: str):
-    """
-    CompanyGroup 레코드 업데이트
-
-    Args:
-        db (Session): 데이터베이스 세션
-        group_id (int): 업데이트할 그룹 ID
-        new_group_name (str): 새로운 그룹 이름
-
-    Returns:
-        tuple: (dict, str) - (업데이트된 데이터, 메시지) 또는 (None, 에러 메시지)
-    """
-    try:
-        group = db.query(CompanyGroup).filter(CompanyGroup.group_id == group_id).first()
-        if group:
-          group.group_name = new_group_name
-          db.commit()
-          db.refresh(group)
-          return group.to_dict(), "그룹이 성공적으로 수정되었습니다."
-        return None, "해당하는 그룹이 없습니다."
-    except IntegrityError:
-      db.rollback()
-      return None, "이미 존재하는 그룹 이름입니다."
-    except Exception as e:
-        db.rollback()
-        return None, f"그룹 수정 중 오류가 발생했습니다: {str(e)}"
-
-
-def delete_company_group(db: Session, group_id: int):
-    """
-    CompanyGroup 레코드 삭제
-
-    Args:
-        db (Session): 데이터베이스 세션
-        group_id (int): 삭제할 그룹 ID
-
-    Returns:
-        tuple: (None, str) - (None, 메시지)
-    """
-    try:
-        group = db.query(CompanyGroup).filter(CompanyGroup.group_id == group_id).first()
-        if group:
-          db.delete(group)
-          db.commit()
-          return None, "그룹이 성공적으로 삭제되었습니다."
-        return None, "해당하는 그룹이 없습니다."
-    except Exception as e:
-        db.rollback()
-        return None, f"그룹 삭제 중 오류가 발생했습니다: {str(e)}"
+    # 최종 테스트 결과 출력
+    all_tests_passed = all(test_results) # 모든 요소가 True인지 확인
+    if all_tests_passed:
+        print("\n 모든 테스트를 통과했습니다! ")
+    else:
+        print("\n 테스트 중 실패한 부분이 있습니다. ")
+        for i, result in enumerate(test_results):
+          if not result:
+            print(f" {i+1}번째 테스트 실패 ")

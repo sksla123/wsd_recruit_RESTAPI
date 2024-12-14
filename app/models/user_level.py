@@ -1,148 +1,92 @@
 # models/user_level.py
+
 from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import declarative_base, Session
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import Session
 
 Base = declarative_base()
 
 class UserLevel(Base):
     """
-    UserLevel 테이블 모델
-
-    Attributes:
-        user_level (int): 사용자 레벨 (PK)
-        user_level_name (str): 사용자 레벨 명칭 (NN)
+    UserLevel 테이블에 대한 SQLAlchemy 모델 클래스
     """
-    __tablename__ = 'UserLevel'
+    __tablename__ = "UserLevel"
 
-    user_level = Column(Integer, primary_key=True, comment="사용자 레벨")
-    user_level_name = Column(String(255), nullable=False, comment="사용자 레벨 명칭")
+    level_code = Column(Integer, primary_key=True)
+    level_name = Column(String(255), nullable=False)
 
     def to_dict(self):
-        """
-        모델 객체를 딕셔너리로 변환
-
-        Returns:
-            dict: 모델의 데이터를 담은 딕셔너리
-        """
         return {
-            "user_level": self.user_level,
-            "user_level_name": self.user_level_name
+            "level_code": self.level_code,
+            "level_name": self.level_name
         }
 
-def create_user_level(db: Session, user_level: int, user_level_name: str):
+def get_user_levels(db: Session, page: int = 1, item_counts: int = 20) -> dict:
     """
-    새로운 UserLevel 레코드 생성
+    UserLevel 목록을 조회하는 함수 (Pagination 적용)
+    """
+    offset = (page - 1) * item_counts
+    user_levels = db.query(UserLevel).offset(offset).limit(item_counts).all()
+    total_count = db.query(UserLevel).count()
+    return {
+        "user_levels": [user_level.to_dict() for user_level in user_levels],
+        "total_count": total_count,
+        "current_page": page,
+        "total_page": (total_count + item_counts - 1) // item_counts
+    }
 
-    Args:
-        db (Session): 데이터베이스 세션
-        user_level (int): 사용자 레벨
-        user_level_name (str): 사용자 레벨 명칭
-
-    Returns:
-        tuple: (dict, str) - (생성된 데이터, 메시지) 또는 (None, 에러 메시지)
+def create_user_level(db: Session, level_code: int, level_name: str) -> dict:
+    """
+    새로운 UserLevel을 생성하는 함수
     """
     try:
-        db_user_level = UserLevel(user_level=user_level, user_level_name=user_level_name)
-        db.add(db_user_level)
+        new_user_level = UserLevel(level_code=level_code, level_name=level_name)
+        db.add(new_user_level)
         db.commit()
-        db.refresh(db_user_level)
-        return db_user_level.to_dict(), "사용자 레벨이 성공적으로 생성되었습니다."
-    except IntegrityError:
-        db.rollback()
-        return None, "이미 존재하는 사용자 레벨입니다."
+        db.refresh(new_user_level)
+        return {"success": True, "user_level": new_user_level.to_dict()}
     except Exception as e:
         db.rollback()
-        return None, f"사용자 레벨 생성 중 오류가 발생했습니다: {str(e)}"
+        return {"success": False, "error": str(e)}
 
-def get_user_level(db: Session, user_level: int):
+def get_user_level_by_id(db: Session, level_code_id: int) -> dict:
     """
-    user_level로 UserLevel 레코드 조회
-
-    Args:
-        db (Session): 데이터베이스 세션
-        user_level (int): 조회할 사용자 레벨
-
-    Returns:
-        tuple: (dict, str) - (조회된 데이터, 메시지) 또는 (None, 메시지)
+    level_code로 UserLevel 정보를 가져오는 함수
     """
-    try:
-        user_level_obj = db.query(UserLevel).filter(UserLevel.user_level == user_level).first()
-        if user_level_obj:
-            return user_level_obj.to_dict(), "사용자 레벨 조회 성공"
-        return None, "해당하는 사용자 레벨이 없습니다."
-    except Exception as e:
-        return None, f"사용자 레벨 조회 중 오류가 발생했습니다: {str(e)}"
+    user_level = db.query(UserLevel).filter(UserLevel.level_code == level_code_id).first()
+    if user_level:
+        return {"success": True, "user_level": user_level.to_dict()}
+    else:
+        return {"success": False, "message": "UserLevel not found"}
 
-def get_user_level_list(db: Session, page: int = 1, per_page: int = 20, pagination: bool = False):
+def update_user_level(db: Session, level_code_id: int, new_level_name: str) -> dict:
     """
-    UserLevel 레코드 목록 조회 (페이지네이션 지원)
-
-    Args:
-        db (Session): 데이터베이스 세션
-        page (int): 페이지 번호 (기본값: 1)
-        per_page (int): 페이지당 항목 수 (기본값: 20)
-        pagination (bool): 페이지네이션 사용 여부 (기본값: False)
-
-    Returns:
-        tuple: (list, str) - (조회된 데이터 목록, 메시지) 또는 (None, 메시지)
+    기존 UserLevel 정보를 수정하는 함수
     """
-    try:
-        query = db.query(UserLevel)
-        if pagination:
-            user_levels = query.offset((page - 1) * per_page).limit(per_page).all()
-        else:
-            user_levels = query.all()
-        user_level_list = [user_level.to_dict() for user_level in user_levels]
-        return user_level_list, "사용자 레벨 목록 조회 성공"
-    except Exception as e:
-        return None, f"사용자 레벨 목록 조회 중 오류가 발생했습니다: {str(e)}"
-
-def update_user_level(db: Session, user_level: int, new_user_level_name: str):
-    """
-    UserLevel 레코드 업데이트
-
-    Args:
-        db (Session): 데이터베이스 세션
-        user_level (int): 수정할 사용자 레벨
-        new_user_level_name (str): 새로운 사용자 레벨 명칭
-
-    Returns:
-        tuple: (dict, str) - (업데이트된 데이터, 메시지) 또는 (None, 에러 메시지)
-    """
-    try:
-        user_level_obj = db.query(UserLevel).filter(UserLevel.user_level == user_level).first()
-        if user_level_obj:
-            user_level_obj.user_level_name = new_user_level_name
+    user_level = db.query(UserLevel).filter(UserLevel.level_code == level_code_id).first()
+    if user_level:
+        try:
+            user_level.level_name = new_level_name
             db.commit()
-            db.refresh(user_level_obj)
-            return user_level_obj.to_dict(), "사용자 레벨이 성공적으로 수정되었습니다."
-        return None, "해당하는 사용자 레벨이 없습니다."
-    except IntegrityError:
-      db.rollback()
-      return None, "이미 존재하는 사용자 레벨입니다." #이 부분은 PK라 의미 없음.
-    except Exception as e:
-        db.rollback()
-        return None, f"사용자 레벨 수정 중 오류가 발생했습니다: {str(e)}"
+            return {"success": True, "user_level": user_level.to_dict()}
+        except Exception as e:
+            db.rollback()
+            return {"success": False, "error": str(e)}
+    else:
+        return {"success": False, "message": "UserLevel not found"}
 
-def delete_user_level(db: Session, user_level: int):
+def delete_user_level(db: Session, level_code_id: int) -> dict:
     """
-    UserLevel 레코드 삭제
-
-    Args:
-        db (Session): 데이터베이스 세션
-        user_level (int): 삭제할 사용자 레벨
-
-    Returns:
-        tuple: (None, str) - (None, 메시지)
+    기존 UserLevel 정보를 삭제하는 함수
     """
-    try:
-        user_level_obj = db.query(UserLevel).filter(UserLevel.user_level == user_level).first()
-        if user_level_obj:
-            db.delete(user_level_obj)
+    user_level = db.query(UserLevel).filter(UserLevel.level_code == level_code_id).first()
+    if user_level:
+        try:
+            db.delete(user_level)
             db.commit()
-            return None, "사용자 레벨이 성공적으로 삭제되었습니다."
-        return None, "해당하는 사용자 레벨이 없습니다."
-    except Exception as e:
-        db.rollback()
-        return None, f"사용자 레벨 삭제 중 오류가 발생했습니다: {str(e)}"
+            return {"success": True}
+        except Exception as e:
+            db.rollback()
+            return {"success": False, "error": str(e)}
+    else:
+        return {"success": False, "message": "UserLevel not found"}
