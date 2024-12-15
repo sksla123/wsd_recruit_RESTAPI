@@ -67,7 +67,7 @@ def get_login_by_refresh_id(db: Session, refresh_id_input: int) -> dict:
     
 def get_login_by_refresh_token(db: Session, refresh_token_input: str) -> dict:
     """refresh_id로 Login 정보를 가져오는 함수"""
-    login = db.query(Login).filter(Login.refresh_id == refresh_token_input).first()
+    login = db.query(Login).filter(Login.refresh_token == refresh_token_input).first()
     if login:
         return {"success": True, "login": login.to_dict()}
     else:

@@ -47,3 +47,19 @@ def calculate_remaining_time(token_dict):
     current_time = datetime.now(timezone.utc).timestamp()
     remaining_time = exp_timestamp - current_time
     return max(remaining_time, 0)  # 음수 값 방지
+
+
+def mysql_str_to_datetime(datetime_str):
+    """
+    문자열 형식의 날짜시간을 datetime 객체로 변환합니다.
+    
+    :param datetime_str: '2024-12-15T22:18:21' 형식의 문자열
+    :return: datetime 객체
+    """
+    try:
+        dt = datetime.strptime(datetime_str, '%Y-%m-%dT%H:%M:%S')
+        seoul_tz = ZoneInfo("Asia/Seoul")
+        return dt.replace(tzinfo=seoul_tz)
+    except ValueError as e:
+        print(f"Error: {e}. 올바른 날짜 형식이 아닙니다.")
+        return None

@@ -21,7 +21,7 @@ login_model = auth.model('LoginModel', {
     'user_password': fields.String(required=True, example='examplePassword123')
 })
 
-logout_model = auth.model('LoginModel', {
+logout_model = auth.model('LogoutModel', {
     'refresh_token': fields.String(required=True, example='abcdefghijkmnlopqrstuvwxyz')
 })
 
@@ -32,25 +32,11 @@ refresh_model = auth.model('RefreshModel', {
 
 profile_update_model = auth.model('ProfileUpdateModel', {
     'user_id': fields.String(required=True, example='example_user'),
-    'action': fields.Integer(required=True, example=1),
-    'new_password': fields.String(example='newExamplePassword123'),
-    'new_email': fields.String(example='new_example_user@example.com')
+    'action': fields.String(required=True, example='password'),
+    'new_value': fields.String(required=True, example='newSecurePassword123')
 })
 
-# Response models
-user_model = auth.model('UserModel', {
-    'user_id': fields.String(example='example_user'),
-    'user_email': fields.String(example='example_user@example.com')
-})
 
-auth_response = auth.model('AuthResponse', {
-    'success': fields.Boolean(example=True),
-    'message': fields.String(example='Operation successful'),
-    'input_data': fields.Raw(),
-    'user': fields.Nested(user_model),
-    'access_token': fields.String(),
-    'refresh_token': fields.String()
-})
 
 @auth.route('/register')
 class UserRegister(Resource):
@@ -110,7 +96,7 @@ class UserProfile(Resource):
     def post(self):
         """회원정보를 수정합니다."""
         try:
-            data, message = auth_service.update_user_profile(request.json)
-            return JsonResponse(data, message).to_response()
+            success, data, message, status = auth_service.update_user_profile(request.json)
+            return JsonResponse(success, data, message, status).to_response()
         except Exception as e:
-            return fail(str(e), HTTPStatus.INTERNAL_SERVER_ERROR)
+            return fail(str(e))
