@@ -656,10 +656,10 @@ def test_user_level_model(db: Session):
         db.rollback()
         print(f"테스트 데이터 삭제 실패: {e}")
 
-db = SessionLocal()
 # db = get_db()
 
 if __name__ == "__main__":
+    db = SessionLocal()
     try:
         test_company_and_group_models(db)
         test_edu_code_model(db)

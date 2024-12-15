@@ -2,7 +2,7 @@
 from flask import request
 from flask_restx import Namespace, Resource
 from app.services import application_service
-from app.views.response import JsonResponse, success, fail  # JsonResponse import
+from app.views.response import JsonResponse, fail  # JsonResponse import
 from http import HTTPStatus  # HTTP 상태 코드 사용을 위함.
 
 application = Namespace('auth', description='Application related operations')

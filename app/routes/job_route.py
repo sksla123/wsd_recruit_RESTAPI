@@ -2,7 +2,7 @@
 from flask import request
 from flask_restx import Namespace, Resource, fields
 from app.services import job_service
-from app.views.response import JsonResponse, success, fail # JsonResponse, success, fail import
+from app.views.response import JsonResponse, fail # JsonResponse, success, fail import
 from http import HTTPStatus
 
 job = Namespace('job', description='poster related operations')

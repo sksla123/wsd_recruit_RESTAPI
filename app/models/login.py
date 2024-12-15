@@ -64,10 +64,33 @@ def get_login_by_refresh_id(db: Session, refresh_id_input: int) -> dict:
         return {"success": True, "login": login.to_dict()}
     else:
         return {"success": False, "message": "Login not found"}
+    
+def get_login_by_refresh_token(db: Session, refresh_token_input: str) -> dict:
+    """refresh_id로 Login 정보를 가져오는 함수"""
+    login = db.query(Login).filter(Login.refresh_id == refresh_token_input).first()
+    if login:
+        return {"success": True, "login": login.to_dict()}
+    else:
+        return {"success": False, "message": "Login not found"}
 
 def delete_login(db: Session, refresh_id_input: int) -> dict:
     """기존 Login 정보를 삭제하는 함수"""
     login = db.query(Login).filter(Login.refresh_id == refresh_id_input).first()
+    if login:
+        try:
+            db.delete(login)
+            db.commit()
+            return {"success": True}
+        except Exception as e:
+            db.rollback()
+            return {"success": False, "error": str(e)}
+    else:
+        return {"success": False, "message": "Login not found"}
+    
+def delete_login_by_refresh_token(db: Session, refresh_token_input: str) -> dict:
+    """기존 Login 정보를 삭제하는 함수"""
+    login = db.query(Login).filter(Login.refresh_token == refresh_token_input).first()
+
     if login:
         try:
             db.delete(login)

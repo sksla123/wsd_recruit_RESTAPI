@@ -1,27 +1,51 @@
-import jwt
 from flask import request, jsonify, current_app, g
-from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
-from ..views.response import JsonResponse, success, fail  # JsonResponse, success, fail 임포트
+from flask_jwt_extended import JWTManager, verify_jwt_in_request, jwt_required, create_access_token, create_refresh_token, get_jwt_identity, get_jwt
+from datetime import timedelta
+from ..views.response import JsonResponse, fail
+from ..models.database import get_db
+from ..models.login import Login, get_login_by_user_id, create_login, delete_login
+from ..utils.util import now_korea
+from functools import wraps
 
-from ..models.database import db
-from ..models.login import Login, get_login_by_user_id, create_login, delete_login # Models and database access functions import
-from .. import db
+jwt = JWTManager()
 
 class AuthGuard:
+    """인증 및 권한 부여를 관리하는 클래스"""
+
     EXCLUDED_ENDPOINTS = {
         'auth_user_register': ['POST'],
-        'auth_refresh': ['POST']  # refresh token 요청 엔드포인트 추가
+        'auth_user_login': ['POST'],
+        'auth_refresh_token' : ['POST']
     }
 
     test = False
 
     @staticmethod
     def init_app(app):
+        """Flask 애플리케이션에 AuthGuard를 초기화하는 메서드"""
+        jwt.init_app(app)
+
+        @jwt.token_in_blocklist_loader
+        def check_if_token_revoked(jwt_header, jwt_payload):
+            """토큰이 폐기되었는지 확인하는 콜백 함수"""
+            token_type = jwt_payload.get("type", "access")  # 기본값으로 access
+            jti = jwt_payload["jti"]
+            db = next(get_db())
+
+            if token_type == "access":
+                # Access token의 경우 DB에서 추가 검증 없이 pass
+                return False
+
+            if token_type == "refresh":
+                # Refresh token의 경우 DB에서 JTI를 검증
+                token = get_login_by_user_id(db, jwt_payload["sub"])
+                return token is None or token['login']['refresh_token'] != jti
+
+            return True  # 알 수 없는 토큰 타입의 경우 기본적으로 거부
+
+        
         @app.before_request
         def authenticate():
-            g.middleware_executed = False
-
             if request.endpoint in AuthGuard.EXCLUDED_ENDPOINTS.keys():
                 if request.method in AuthGuard.EXCLUDED_ENDPOINTS[request.endpoint]:
                     return
@@ -30,91 +54,50 @@ class AuthGuard:
                 g.middleware_executed = True
                 return
 
-            # Authorization 헤더 확인
-            token = request.headers.get('Authorization')
-            if not token or not token.startswith("Bearer "):
-                return JsonResponse(message="JWT token is missing or invalid!", status_code=401).to_response()
-
-            # JWT 검증
-            jwt_token = token.split(" ")[1]
             try:
-                payload = AuthGuard.decode_token(jwt_token, app.config['JWT_SECRET_KEY'])
-                request.user = payload  # 인증된 사용자 정보 저장
+                verify_jwt_in_request(optional=True)
+            except:
+                return fail("인증 실패: JWT token is invalid!", 401)
 
-                # refresh token 검증 시 DB 확인 (refresh token 요청이 아닌 경우에만)
-                if request.endpoint != 'auth_refresh': # refresh token 요청이 아닌 경우에만 검증
-                    if payload.get('type') == 'refresh':
-                        login_data = get_login_by_user_id(db.session, payload['user_id'])
-                        if not login_data['success']:
-                            return JsonResponse(message="Refresh token not found in database", status_code=401).to_response()
-                        stored_refresh_token = login_data['login']['refresh_token']
-                        if stored_refresh_token != jwt_token: # refresh token 정보 DB와 일치하지 않으면 오류
-                            return JsonResponse(message="Invalid refresh token!", status_code=403).to_response()
+            if 'Authorization' not in request.headers:
+                return fail("인증 실패: JWT token is missing!", 401)
 
-            except jwt.ExpiredSignatureError:
-                if payload.get('type') == 'refresh': # Refresh 토큰 만료 시 DB에서 삭제
-                    login_data = get_login_by_user_id(db.session, payload['user_id'])
-                    if login_data['success']:
-                        delete_login(db.session, login_data['login']['refresh_id'])
-                return JsonResponse(message="Token has expired!", status_code=401).to_response()
+            @staticmethod
+            def create_access_token(user_id, expires_delta=None):
+                """액세스 토큰을 생성하는 메서드"""
+                if expires_delta is None:
+                    expires_delta = timedelta(minutes=current_app.config['JWT_ACCESS_TOKEN_EXPIRES'])
 
-            except jwt.InvalidTokenError:
-                return JsonResponse(message="Invalid token!", status_code=403).to_response()
-            except Exception as e: # 기타 예외 처리
-                return JsonResponse(message=f"Token verification failed: {str(e)}", status_code=500).to_response()
+                current_time = now_korea()
 
-
-    @staticmethod
-    def decode_token(token, secret_key):
-        """
-        JWT 디코딩 및 검증
-        """
-        return jwt.decode(token, secret_key, algorithms=["HS256"])
-
-    @staticmethod
-    def create_access_token(user_id, expires_in=None):
-        """
-        새로운 Access Token 생성
-        """
-        if expires_in is None:
-            expires_in = current_app.config['JWT_ACCESS_TOKEN_EXPIRES']
-
-        # config에서 설정한 TIME_ZONE을 사용하여 한국 시간으로 설정
-        time_zone = current_app.config['TIME_ZONE'] or "Asia/Seoul"
-        current_time = datetime.now(ZoneInfo(time_zone))
-        expiration_time = current_time + timedelta(minutes=expires_in)
-
-        payload = {
-            "user_id": user_id,
-            "exp": expiration_time,
-            "iat": current_time,
-        }
-        return jwt.encode(payload, current_app.config['JWT_SECRET_KEY'], algorithm="HS256")
+                return create_access_token(
+                    identity=user_id,
+                    expires_delta=expires_delta,
+                    additional_claims={
+                        "type": "access",  # 토큰 타입 명시
+                        "iat": current_time
+                    }
+                )
 
     @staticmethod
     def create_refresh_token(user_id, login_device_info=None, login_ip=None):
-        """
-        Refresh Token 생성 및 DB 저장
-        """
-        expires_in = current_app.config['JWT_REFRESH_TOKEN_EXPIRES']
-
-        # config에서 설정한 TIME_ZONE을 사용하여 한국 시간으로 설정
-        time_zone = current_app.config['TIME_ZONE'] or "Asia/Seoul"
-        current_time = datetime.now(ZoneInfo(time_zone))
-        expiration_time = current_time + timedelta(minutes=expires_in)
-
-        payload = {
-            "user_id": user_id,
-            "type": "refresh",
-            "exp": expiration_time,
-            "iat": current_time,
-        }
-
-        refresh_token = jwt.encode(payload, current_app.config['JWT_SECRET_KEY'], algorithm="HS256")
-        create_result = create_login(db.session, user_id, refresh_token, expiration_time, login_device_info, login_ip) # DB 저장
-
+        """리프레시 토큰을 생성하고 데이터베이스에 저장하는 메서드"""
+        expires_delta = current_app.config['JWT_REFRESH_TOKEN_EXPIRES']
+        
+        current_time = now_korea()
+        expiration_time = current_time + expires_delta
+        
+        refresh_token = create_refresh_token(
+            identity=user_id,
+            expires_delta=expires_delta,
+            additional_claims={"type": "refresh", "iat": current_time}
+        )
+        
+        db = next(get_db())
+        create_result = create_login(db, user_id, refresh_token, expiration_time, login_device_info, login_ip)
+        
         if create_result['success']:
             return refresh_token
         else:
-            print(f"Error creating refresh token in DB: {create_result['error']}") # 로깅 추가
-            return None # DB 저장 실패 시 None 반환
+            print(f"Error creating refresh token in DB: {create_result['error']}")
+            return None

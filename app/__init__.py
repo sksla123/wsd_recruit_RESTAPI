@@ -4,6 +4,7 @@ from flask_restx import Api
 def create_app():
     app = Flask(__name__)
     app.config.from_object('config.Config')
+    print(app.config['JWT_ACCESS_TOKEN_EXPIRES'])
 
     api = Api(app,
               version='1.0',
