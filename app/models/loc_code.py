@@ -4,7 +4,7 @@ from sqlalchemy import Column, Integer, String
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import Session
 
-Base = declarative_base()
+from . import Base
 
 class LocCode(Base):
     """

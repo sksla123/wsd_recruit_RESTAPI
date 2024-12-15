@@ -1,10 +1,10 @@
 # models/company.py
 
 from sqlalchemy import Column, Integer, String, ForeignKey
-from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.orm import relationship
 from sqlalchemy.orm import Session
 
-from .database import Base
+from . import Base
 
 class Company(Base):
     """
@@ -17,7 +17,7 @@ class Company(Base):
     comp_link = Column(String(255))
     group_id = Column(Integer, ForeignKey("CompanyGroup.group_id"), nullable=True)
 
-    # group = relationship("CompanyGroup", back_populates="companies") # CompanyGroup 과의 관계 설정
+    group = relationship("CompanyGroup", back_populates="companies") # CompanyGroup 과의 관계 설정
 
     def to_dict(self):
         return {
@@ -98,56 +98,3 @@ def delete_company(db: Session, comp_id: int) -> dict:
             return {"success": False, "error": str(e)}
     else:
         return {"success": False, "message": "Company not found"}
-    
-if __name__ == "__main__":
-    from .database import engine, SessionLocal
-    
-    Base.metadata.create_all(bind=engine)
-    db = SessionLocal()
-
-    try:
-        # 1. create_company 테스트
-        result_create = create_company(db, "테스트 회사1", "https://test.com", None)
-        assert result_create["success"], f"create_company 실패: {result_create.get('error')}"
-        created_company = result_create["company"]
-        print("create_company 테스트 성공")
-
-        # 2. get_company_by_id 테스트
-        result_get_by_id = get_company_by_id(db, created_company["comp_id"])
-        assert result_get_by_id["success"], f"get_company_by_id 실패: {result_get_by_id.get('message')}"
-        retrieved_company = result_get_by_id["company"]
-        assert created_company["comp_name"] == retrieved_company["comp_name"], "get_company_by_id 데이터 불일치"
-        print("get_company_by_id 테스트 성공")
-        
-        # 3. update_company 테스트
-        new_comp_name = "수정된 테스트 회사"
-        new_comp_link = "https://updated.test.com"
-        result_update = update_company(db, created_company["comp_id"], new_comp_name, new_comp_link, None)
-        assert result_update["success"], f"update_company 실패: {result_update.get('error')}"
-        updated_company = result_update["company"]
-        assert updated_company["comp_name"] == new_comp_name, "update_company comp_name 업데이트 실패"
-        assert updated_company["comp_link"] == new_comp_link, "update_company comp_link 업데이트 실패"
-        print("update_company 테스트 성공")
-
-        # 4. get_companies 테스트 (pagination 테스트 포함)
-        create_company(db, "테스트 회사2", "https://test2.com", None)
-        create_company(db, "테스트 회사3", "https://test3.com", None)
-        result_get_companies = get_companies(db, page=1, item_counts=2)
-        assert len(result_get_companies["companies"]) <= 2, "get_companies 페이지네이션 실패"
-        assert result_get_companies["total_count"] == 3, "get_companies 전체 개수 오류"
-        print("get_companies 테스트 성공")
-
-        # 5. delete_company 테스트
-        result_delete = delete_company(db, created_company["comp_id"])
-        assert result_delete["success"], f"delete_company 실패: {result_delete.get('error')}"
-        result_get_deleted = get_company_by_id(db, created_company["comp_id"])
-        assert not result_get_deleted["success"], "delete_company 삭제 후에도 조회됨"
-        print("delete_company 테스트 성공")
-
-        print("모든 테스트 성공!")
-
-    except AssertionError as e:
-        print(f"테스트 실패: {e}")
-        db.rollback() # 테스트 실패 시 롤백
-    finally:
-        db.close()

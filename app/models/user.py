@@ -5,7 +5,7 @@ from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-Base = declarative_base()
+from . import Base
 
 class User(Base):
     """
@@ -22,7 +22,7 @@ class User(Base):
     user_bookmark = Column(JSON)
     user_applicated = Column(JSON)
 
-    level = relationship("UserLevel", back_populates="users")
+    level = relationship("UserLevel")
 
     def to_dict(self):
         """

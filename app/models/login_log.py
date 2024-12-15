@@ -4,7 +4,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime
 from sqlalchemy.orm import declarative_base, relationship, Session
 from datetime import datetime
 
-Base = declarative_base()
+from . import Base
 
 class LoginLog(Base):
     """LoginLog 테이블에 대한 SQLAlchemy 모델 클래스"""
@@ -17,7 +17,7 @@ class LoginLog(Base):
     login_device_info = Column(Text)
     login_success = Column(Integer) # 성공 1, 실패 0으로 저장
 
-    user = relationship("User", back_populates="login_logs")
+    # user = relationship("User", back_populates="login_logs")
 
     def to_dict(self):
         """LoginLog 객체를 딕셔너리로 변환합니다."""

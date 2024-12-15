@@ -4,7 +4,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey, Text, DateTime
 from sqlalchemy.orm import declarative_base, relationship, Session
 from datetime import datetime
 
-Base = declarative_base()
+from . import Base
 
 class Login(Base):
     """Login 테이블에 대한 SQLAlchemy 모델 클래스"""
@@ -18,7 +18,7 @@ class Login(Base):
     login_device_info = Column(Text)
     login_ip = Column(String(255))
 
-    user = relationship("User", back_populates="logins")
+    # user = relationship("User", back_populates="logins")
 
     def to_dict(self):
         """Login 객체를 딕셔너리로 변환합니다."""

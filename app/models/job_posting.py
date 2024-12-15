@@ -3,7 +3,7 @@ from sqlalchemy.orm import declarative_base, relationship, Session
 from datetime import date
 from typing import Optional
 
-Base = declarative_base()
+from . import Base
 
 class JobPosting(Base):
     """JobPosting 테이블에 대한 SQLAlchemy 모델 클래스"""
@@ -26,10 +26,10 @@ class JobPosting(Base):
     poster_status = Column(Integer, nullable=False)
     poster_writer_user_id = Column(String(255), ForeignKey("User.user_id"), nullable=False)
 
-    company = relationship("Company", back_populates="postings")
-    edu = relationship("EduCode", back_populates="postings")
-    sal = relationship("SalCode", back_populates="postings")
-    writer = relationship("User", back_populates="written_postings")
+    # company = relationship("Company", back_populates="postings")
+    # edu = relationship("EduCode")
+    # sal = relationship("SalCode")
+    # writer = relationship("User", back_populates="written_postings")
 
     def to_dict(self):
         """JobPosting 객체를 딕셔너리로 변환"""
@@ -68,7 +68,6 @@ def _apply_ordering(query, sort_criteria: dict):
         else:
             raise ValueError(f"Invalid sorting method for column: {column_name}, Value should be 0 or 1.")
     return query.order_by(*order_by_clauses)
-
 
 def get_job_postings(db: Session, page: int = 1, item_counts: int = 20) -> dict:
     """JobPosting 목록 조회 (Pagination 적용)"""

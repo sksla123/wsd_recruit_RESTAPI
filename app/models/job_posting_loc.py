@@ -4,7 +4,7 @@ from sqlalchemy import Column, Integer, String, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship, Session
 from sqlalchemy import and_
 
-Base = declarative_base()
+from . import Base
 
 class JobPostingLoc(Base):
     """JobPostingLoc 테이블에 대한 SQLAlchemy 모델 클래스"""
@@ -13,8 +13,8 @@ class JobPostingLoc(Base):
     poster_id = Column(String(255), ForeignKey("JobPosting.poster_id"), primary_key=True, nullable=False)
     loc_code = Column(Integer, ForeignKey("LocCode.loc_code"), primary_key=True, nullable=False)
 
-    job_posting = relationship("JobPosting", back_populates="job_posting_locs")
-    loc_code_info = relationship("LocCode", back_populates="job_posting_locs")
+    # job_posting = relationship("JobPosting", back_populates="job_posting_locs")
+    # loc_code_info = relationship("LocCode", back_populates="job_posting_locs")
 
     def to_dict(self):
         """JobPostingLoc 객체를 딕셔너리로 변환합니다."""

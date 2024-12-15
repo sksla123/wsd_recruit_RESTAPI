@@ -1,11 +1,14 @@
 # models/user_applicated_log.py
 
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, Enum
+import enum
 from sqlalchemy.orm import declarative_base, relationship, Session
 from datetime import datetime
 from sqlalchemy import and_
 
-Base = declarative_base()
+import enum
+
+from . import Base
 
 class ApplicateAction(enum.Enum):
     CREATE = 0 # 생성
@@ -21,11 +24,11 @@ class UserApplicatedLog(Base):
     applicated_at = Column(DateTime, nullable=False, default=datetime.utcnow) #default 추가
     user_id = Column(String(255), ForeignKey("User.user_id"), nullable=False)
     poster_id = Column(String(255), ForeignKey("JobPosting.poster_id"), nullable=False)
-    applicate_action = Column(ENUM(ApplicateAction), nullable=False)
+    applicate_action = Column(Enum(ApplicateAction), nullable=False)
 
-    user_applicated = relationship("UserApplicated", back_populates="logs")
-    user = relationship("User", back_populates="applicated_logs")
-    job_posting = relationship("JobPosting", back_populates="applicated_logs")
+    # user_applicated = relationship("UserApplicated", back_populates="logs")
+    # user = relationship("User", back_populates="applicated_logs")
+    # job_posting = relationship("JobPosting", back_populates="applicated_logs")
     
 
     def to_dict(self):

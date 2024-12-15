@@ -4,7 +4,7 @@ from sqlalchemy import Column, String, ForeignKey
 from sqlalchemy.orm import declarative_base, relationship, Session
 from sqlalchemy import and_
 
-Base = declarative_base()
+from . import Base
 
 class UserBookmark(Base):
     """UserBookmark 테이블에 대한 SQLAlchemy 모델 클래스"""
@@ -13,8 +13,8 @@ class UserBookmark(Base):
     user_id = Column(String(255), ForeignKey("User.user_id"), primary_key=True, nullable=False)
     poster_id = Column(String(255), ForeignKey("JobPosting.poster_id"), primary_key=True, nullable=False)
 
-    user = relationship("User", back_populates="bookmarks")
-    job_posting = relationship("JobPosting", back_populates="user_bookmarks")
+    # user = relationship("User", back_populates="bookmarks")
+    # job_posting = relationship("JobPosting", back_populates="user_bookmarks")
 
     def to_dict(self):
         """UserBookmark 객체를 딕셔너리로 변환합니다."""

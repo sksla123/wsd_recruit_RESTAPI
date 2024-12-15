@@ -5,7 +5,7 @@ from sqlalchemy.orm import declarative_base, relationship, Session
 from sqlalchemy.dialects.mysql import ENUM
 import enum
 
-Base = declarative_base()
+from . import Base
 
 class ApplicationStatus(enum.Enum):
     APPLIED = 0     # 지원
@@ -24,8 +24,8 @@ class UserApplicated(Base):
     application = Column(Text)
     application_status = Column(ENUM(ApplicationStatus), nullable=False) # enum 타입으로 변경
 
-    user = relationship("User", back_populates="applications")
-    job_posting = relationship("JobPosting", back_populates="user_applications")
+    # user = relationship("User", back_populates="applications")
+    # job_posting = relationship("JobPosting", back_populates="user_applications")
 
     def to_dict(self):
         """UserApplicated 객체를 딕셔너리로 변환합니다."""
