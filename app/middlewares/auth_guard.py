@@ -15,7 +15,9 @@ class AuthGuard:
     EXCLUDED_ENDPOINTS = {
         'auth_user_register': ['POST'],
         'auth_user_login': ['POST'],
-        'auth_refresh_token' : ['POST']
+        'auth_refresh_token' : ['POST'],
+        'job_applications' : ['GET'],
+        'job_application': ['GET']
     }
 
     test = False
@@ -55,7 +57,7 @@ class AuthGuard:
                 return
 
             try:
-                verify_jwt_in_request(optional=True)
+                verify_jwt_in_request()
             except:
                 return fail("인증 실패: JWT token is invalid!", 401)
 

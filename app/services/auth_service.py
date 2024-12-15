@@ -81,7 +81,7 @@ def user_login(data):
     if base64_decode(user["user_password"]) != user_password:
         message = "잘못된 비밀번호 입니다."
         create_login_log(db, login_id=user_id, login_success=0)
-        return False, _data, _data, 400
+        return False, _data, message, 400
 
     access_token = create_access_token(identity=user_id)
     refresh_token = create_refresh_token(identity=user_id)

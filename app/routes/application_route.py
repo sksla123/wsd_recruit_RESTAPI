@@ -1,9 +1,9 @@
-# routes/application_route.py
 from flask import request
 from flask_restx import Namespace, Resource
 from app.services import application_service
-from app.views.response import JsonResponse, fail  # JsonResponse import
-from http import HTTPStatus  # HTTP 상태 코드 사용을 위함.
+from app.views.response import JsonResponse, fail
+from http import HTTPStatus
+from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 
 application = Namespace('auth', description='Application related operations')
 
@@ -22,12 +22,12 @@ class Application(Resource):
             JsonResponse: 지원 신청 결과 데이터와 메시지
         """
         try:
-            data, message = application_service.applicate(request.json)
-            return JsonResponse(data, message).to_response()  # JsonResponse로 응답 생성
+            success, data, message, status = application_service.applicate(request.json)
+            return JsonResponse(success, data, message, status).to_response()
         except Exception as e:
-            # 예외 발생 시 fail response 생성
-            return fail(str(e), HTTPStatus.INTERNAL_SERVER_ERROR)
-
+            return fail(str(e))
+    
+    @jwt_required()
     def get(self):
         """
         지원 로그를 조회합니다.
@@ -37,8 +37,12 @@ class Application(Resource):
         Returns:
             JsonResponse: 지원 로그 데이터와 메시지
         """
-        data, message = application_service.get_application_log(request.args.to_dict())
-        return JsonResponse(data, message).to_response()  # JsonResponse로 응답 생성
+        
+        current_user = get_jwt_identity()
+        # print(current_user)
+        
+        success, data, message, status = application_service.get_application_log(request.args.to_dict(), current_user)
+        return JsonResponse(success, data, message, status).to_response()
 
 @application.route('/<int:application_id>')
 class ApplicationCancel(Resource):
@@ -54,5 +58,5 @@ class ApplicationCancel(Resource):
         Returns:
             JsonResponse: 지원 취소 결과 데이터와 메시지
         """
-        data, message = application_service.update_application_status(request.json, application_id)
-        return JsonResponse(data, message).to_response()  # JsonResponse로 응답 생성
+        success, data, message, status = application_service.update_application_status(request.json, application_id)
+        return JsonResponse(success, data, message, status).to_response()

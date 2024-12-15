@@ -73,6 +73,7 @@ class UserLogout(Resource):
         """로그아웃을 처리합니다."""
         try:
             current_user = get_jwt_identity()
+            print(current_user)
             if not current_user:
                 message = "로그인 먼저 해주세요."
                 return fail(message, 400)

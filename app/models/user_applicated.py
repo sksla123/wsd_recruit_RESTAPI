@@ -2,17 +2,15 @@
 
 from sqlalchemy import Column, Integer, String, ForeignKey, Text
 from sqlalchemy.orm import declarative_base, relationship, Session
-from sqlalchemy.dialects.mysql import ENUM
 import enum
 
 from . import Base
 
-class ApplicationStatus(enum.Enum):
+class ApplicationStatus(enum.IntEnum):
     APPLIED = 0     # 지원
     CANCELLED = 1   # 취소
     ACCEPTED = 2    # 접수됨
     REJECTED = 3    # 거절됨
-
 
 class UserApplicated(Base):
     """UserApplicated 테이블에 대한 SQLAlchemy 모델 클래스"""
@@ -22,10 +20,7 @@ class UserApplicated(Base):
     user_id = Column(String(255), ForeignKey("User.user_id"), nullable=False)
     poster_id = Column(String(255), ForeignKey("JobPosting.poster_id"), nullable=False)
     application = Column(Text)
-    application_status = Column(ENUM(ApplicationStatus), nullable=False) # enum 타입으로 변경
-
-    # user = relationship("User", back_populates="applications")
-    # job_posting = relationship("JobPosting", back_populates="user_applications")
+    application_status = Column(Integer, nullable=False)
 
     def to_dict(self):
         """UserApplicated 객체를 딕셔너리로 변환합니다."""
@@ -34,7 +29,7 @@ class UserApplicated(Base):
             "user_id": self.user_id,
             "poster_id": self.poster_id,
             "application": self.application,
-            "application_status": self.application_status.value if self.application_status else None, # enum 값인 value를 가져오도록 수정. None 처리 추가
+            "application_status": self.application_status,
         }
 
 def get_user_applicateds(db: Session, page: int = 1, item_counts: int = 20) -> dict:
@@ -50,9 +45,10 @@ def get_user_applicateds(db: Session, page: int = 1, item_counts: int = 20) -> d
         "total_page": (total_count + item_counts - 1) // item_counts
     }
 
-def create_user_applicated(db: Session, user_id: str, poster_id: str, application: str, application_status: ApplicationStatus) -> dict:
+def create_user_applicated(db: Session, user_id: str, poster_id: str, application: str, application_status: int) -> dict:
     """새로운 UserApplicated를 생성하는 함수"""
     try:
+
         new_applicated = UserApplicated(user_id=user_id, poster_id=poster_id, application=application, application_status=application_status)
         db.add(new_applicated)
         db.commit()
@@ -61,16 +57,18 @@ def create_user_applicated(db: Session, user_id: str, poster_id: str, applicatio
     except Exception as e:
         db.rollback()
         return {"success": False, "error": str(e)}
-    
+
 def get_user_applicated_by_id(db: Session, application_id_input: int) -> dict:
     """application_id로 UserApplicated 정보를 가져오는 함수"""
+    # print("a")
     applicated = db.query(UserApplicated).filter(UserApplicated.application_id == application_id_input).first()
+    # print(applicated)
     if applicated:
         return {"success": True, "user_applicated": applicated.to_dict()}
     else:
         return {"success": False, "message": "UserApplicated not found"}
 
-def update_user_applicated(db: Session, application_id_input: int, new_application: str = None, new_application_status: ApplicationStatus = None) -> dict:
+def update_user_applicated(db: Session, application_id_input: int, new_application: str = None, new_application_status: int = None) -> dict:
     """기존 UserApplicated 정보를 수정하는 함수"""
     applicated = db.query(UserApplicated).filter(UserApplicated.application_id == application_id_input).first()
     if applicated:
