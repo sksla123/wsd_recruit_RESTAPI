@@ -1,12 +1,11 @@
 # models/company_group.py
 
 from sqlalchemy import Column, Integer, String
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declarative_base, relationship
 from sqlalchemy.orm import Session
+from .database import Base
 
 from sqlalchemy import create_engine
-
-Base = declarative_base()
 
 class CompanyGroup(Base):
     """
@@ -95,45 +94,27 @@ def delete_company_group(db: Session, group_id: int) -> dict:
     
 
 if __name__ == "__main__":
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
+    from .database import engine, SessionLocal
     from dotenv import load_dotenv
-    import os
 
     load_dotenv()
 
-    class Config:
-        # ... (기존 Config 클래스 내용 동일)
-        MySQL_DB_URL = os.getenv('MySQL_DB_URL')
-        MySQL_DB_PORT = int(os.getenv('MySQL_DB_PORT'))
-        MySQL_DB_USER = os.getenv('MySQL_DB_USER')
-        MySQL_DB_PASSWORD = os.getenv('MySQL_DB_PASSWORD')
-        MySQL_DB_NAME = os.getenv('MySQL_DB_NAME')
-        SQLALCHEMY_DATABASE_URI = f"mysql+pymysql://{MySQL_DB_USER}:{MySQL_DB_PASSWORD}@{MySQL_DB_URL}:{MySQL_DB_PORT}/{MySQL_DB_NAME}?charset=utf8mb4"
-        SQLALCHEMY_TRACK_MODIFICATIONS = False
-
-    config = Config()
-
-    engine = create_engine(config.SQLALCHEMY_DATABASE_URI, echo=True)
-
     Base.metadata.create_all(engine)
-
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()
 
-    test_results = [] # 테스트 결과를 저장할 리스트
+    test_results = []  # 테스트 결과를 저장할 리스트
 
     try:
         # 테스트 로직
         print("--- CREATE TEST ---")
         create_result = create_company_group(db, "Test Group 1")
         print(create_result)
-        test_results.append(create_result["success"]) #결과 추가
+        test_results.append(create_result["success"])
 
         print("--- GET ALL TEST ---")
         get_all_result = get_company_groups(db)
         print(get_all_result)
-        test_results.append(get_all_result.get("success", True)) #get all은 예외가 없으므로 success 키가 없어도 True로 간주
+        test_results.append(get_all_result.get("success", True))
 
         if create_result["success"]:
             created_group_id = create_result["group"]["group_id"]
@@ -163,16 +144,16 @@ if __name__ == "__main__":
 
     except Exception as e:
         print(f"테스트 중 오류 발생: {e}")
-        test_results.append(False) # 오류 발생 시 테스트 실패로 처리
+        test_results.append(False)  # 오류 발생 시 테스트 실패로 처리
     finally:
         db.close()
 
     # 최종 테스트 결과 출력
-    all_tests_passed = all(test_results) # 모든 요소가 True인지 확인
+    all_tests_passed = all(test_results)  # 모든 요소가 True인지 확인
     if all_tests_passed:
-        print("\n 모든 테스트를 통과했습니다! ")
+        print("\n 모든 테스트를 통과했습니다!")
     else:
-        print("\n 테스트 중 실패한 부분이 있습니다. ")
+        print("\n 테스트 중 실패한 부분이 있습니다.")
         for i, result in enumerate(test_results):
-          if not result:
-            print(f" {i+1}번째 테스트 실패 ")
+            if not result:
+                print(f" {i+1}번째 테스트 실패")
