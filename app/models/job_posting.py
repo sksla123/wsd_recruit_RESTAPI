@@ -257,13 +257,15 @@ def get_available_job_postings(db: Session, page: int = 1, item_counts: int = 20
         offset = (page - 1) * item_counts
         postings = query.offset(offset).limit(item_counts).all()
         total_count = query.count()
-
-        return {
-            "success": True,
+        data = {
             "postings": [posting.to_brief_dict() for posting in postings],
             "total_count": total_count,
             "current_page": page,
-            "total_page": (total_count + item_counts - 1) // item_counts
+            "total_page": (total_count + item_counts - 1) // item_counts,
+        }
+        return {
+            "success": True,
+            "data": data
         }
     except ValueError as e:  # 유효하지 않은 정렬 기준 처리
         return {"success": False, "message": str(e)}

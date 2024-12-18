@@ -88,9 +88,9 @@ def get_applications_list(query_params):
         per_page = 20
 
         # 정렬 기준 설정
-        sort_by = query_params.get('sort_by', 'deadline_date')  # 기본 정렬: deadline_date
-        if sort_by not in ['deadline_date']:
-            return False, None, "Not valid sort option.", 400
+        sort_by = query_params.get('sort_by', "deadline_date")  # 기본 정렬: deadline_date
+        if sort_by not in ['deadline_date', 'last_updated_date', 'edu_code', 'sal_code', 'poster_title']:
+            return False, None, "Not valid sorting option.", 400
 
         sort_order = query_params.get('sort_order', 'asc')  # 정렬 순서: 내림차순('desc') 1, 오름차순('asc') 0
         sort_criteria = {sort_by: {'sorting_method': 0 if sort_order == 'asc' else 1}}
@@ -121,14 +121,14 @@ def get_applications_list(query_params):
         # 데이터베이스에서 채용 공고 조회
         result = get_available_job_postings(
             db=db,
-            sort_criteria=sort_criteria,
             page=page,
             item_counts=per_page,
             filters=filters,
+            sort_criteria=sort_criteria,
         )
 
         if result['success']:
-            return True, result['postings'], "채용 공고 목록을 성공적으로 조회했습니다.", 200
+            return True, result['data'], "채용 공고 목록을 성공적으로 조회했습니다.", 200
         else:
             return False, None, result['message'], 400
 
