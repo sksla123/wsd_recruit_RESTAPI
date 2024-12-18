@@ -44,7 +44,7 @@ def get_application_log(query_params, current_user):
     except Exception as e:
         return False, None, str(e), 500
 
-def update_application_status(data, application_id):
+def update_application_status(data, application_id, current_user):
     """
     지원 상태 업데이트 테스트 함수
     """
@@ -55,7 +55,6 @@ def update_application_status(data, application_id):
         if new_status is None:
             return False, None, "필수적인 키가 제공되지 않음", 400
         
-
         if new_status.value not in [ApplicationStatus.APPLIED.value, ApplicationStatus.CANCELLED.value]:
             return False, None, "허용되지 않은 동작입니다.", 409
 
@@ -64,8 +63,11 @@ def update_application_status(data, application_id):
         if not applicated['success']:
             return False, None, "Application not found", 404
         
+        # 현재 사용자와 지원서의 user_id 비교
+        if applicated['user_applicated']['user_id'] != current_user:
+            return False, None, "권한이 없습니다. 본인의 지원서만 수정할 수 있습니다.", 403
+        
         result = update_user_applicated(db, application_id, new_application_status=new_status.value)
-        print(result)
 
         if result['success']:
             log_result = create_user_applicated_log(db, application_id, result['user_applicated']['user_id'], 

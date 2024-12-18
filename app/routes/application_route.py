@@ -12,6 +12,7 @@ class Application(Resource):
     """
     지원 관련 API를 제공합니다.
     """
+    # @application.doc(security='Bearer Auth')
     def post(self):
         """
         지원 신청을 처리합니다.
@@ -27,6 +28,7 @@ class Application(Resource):
         except Exception as e:
             return fail(str(e))
     
+    # @application.doc(security='Bearer Auth')
     @jwt_required()
     def get(self):
         """
@@ -49,6 +51,8 @@ class ApplicationCancel(Resource):
     """
     지원 취소 관련 API를 제공합니다.
     """
+    # @application.doc(security='Bearer Auth')
+    @jwt_required()
     def delete(self, application_id):
         """
         지원을 취소합니다.
@@ -58,5 +62,6 @@ class ApplicationCancel(Resource):
         Returns:
             JsonResponse: 지원 취소 결과 데이터와 메시지
         """
-        success, data, message, status = application_service.update_application_status(request.json, application_id)
+        current_user = get_jwt_identity()
+        success, data, message, status = application_service.update_application_status(request.json, application_id, current_user)
         return JsonResponse(success, data, message, status).to_response()

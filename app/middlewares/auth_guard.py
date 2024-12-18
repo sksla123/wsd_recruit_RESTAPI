@@ -7,6 +7,7 @@ from ..models.database import get_db
 from ..models.login import Login, get_login_by_user_id, create_login, delete_login
 from ..utils.util import now_korea
 from functools import wraps
+from werkzeug.datastructures import Headers
 
 jwt = JWTManager()
 
@@ -53,9 +54,9 @@ class AuthGuard:
         
         @app.before_request
         def authenticate():
-            print(request)
-            print(request.endpoint)
-            print(request.method)
+            # print(request)
+            # print(request.endpoint)
+            # print(request.method)
 
             if request.endpoint is None:
                 return
@@ -67,6 +68,14 @@ class AuthGuard:
             if AuthGuard.test:
                 g.middleware_executed = True
                 return
+
+            # Authorization 헤더 확인 및 수정
+            auth_header = request.headers.get('Authorization')
+            if auth_header and not auth_header.startswith('Bearer '):
+                # 원본 헤더를 수정할 수 없으므로, 새로운 헤더를 만들어 저장
+                modified_auth_header = f"Bearer {auth_header}"
+                request.headers = Headers(request.headers)
+                request.headers['Authorization'] = modified_auth_header
 
             try:
                 verify_jwt_in_request()
