@@ -9,7 +9,7 @@ def create_app():
     api = Api(app,
               version='1.0',
               title='Recruilting Backend REST API',
-              description='API for Recreuilting Backend',
+              description='백엔드 api 구현',
               doc='/api-docs',
               add_specs=False,
               )

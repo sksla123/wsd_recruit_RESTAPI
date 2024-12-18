@@ -1,0 +1,18 @@
+/home/ubuntu/anaconda3/envs/312WSDa3/bin/python: Error while finding module specification for 'run.py' (ModuleNotFoundError: __path__ attribute not found on 'run' while trying to find 'run.py'). Try using 'run' instead of 'run.py' as the module name.
+0:15:00
+Map([<Rule '/static/<filename>' (OPTIONS, GET, HEAD) -> static>,
+ <Rule '/swagger.json' (OPTIONS, GET, HEAD) -> specs>,
+ <Rule '/api-docs' (OPTIONS, GET, HEAD) -> doc>,
+ <Rule '/' (OPTIONS, GET, HEAD) -> root>,
+ <Rule '/swaggerui/<filename>' (OPTIONS, GET, HEAD) -> restx_doc.static>,
+ <Rule '/auth/register' (OPTIONS, POST) -> auth_user_register>,
+ <Rule '/auth/login' (OPTIONS, POST) -> auth_user_login>,
+ <Rule '/auth/logout' (OPTIONS, POST) -> auth_user_logout>,
+ <Rule '/auth/refresh' (OPTIONS, POST) -> auth_refresh_token>,
+ <Rule '/auth/profile' (OPTIONS, POST) -> auth_user_profile>,
+ <Rule '/applications/' (OPTIONS, GET, HEAD, POST) -> auth_application>,
+ <Rule '/applications/<application_id>' (OPTIONS, DELETE) -> auth_application_cancel>,
+ <Rule '/jobs/' (OPTIONS, GET, HEAD) -> job_applications>,
+ <Rule '/jobs/<poster_id>' (OPTIONS, GET, HEAD) -> job_application>,
+ <Rule '/bookmarks/register' (OPTIONS, POST) -> bookmark_bookmarks>,
+ <Rule '/bookmarks/' (OPTIONS, GET, HEAD) -> bookmark_get_bookmarks>])

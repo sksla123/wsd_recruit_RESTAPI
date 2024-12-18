@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, Date, Text, JSON, asc, desc, and_, or_
 from sqlalchemy.orm import declarative_base, relationship, Session
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 
 from . import Base
@@ -25,11 +25,7 @@ class JobPosting(Base):
     sal_code = Column(Integer, ForeignKey("SalCode.sal_code"), nullable=False)
     poster_status = Column(Integer, nullable=False)
     poster_writer_user_id = Column(String(255), ForeignKey("User.user_id"), nullable=False)
-
-    # company = relationship("Company", back_populates="postings")
-    # edu = relationship("EduCode")
-    # sal = relationship("SalCode")
-    # writer = relationship("User", back_populates="written_postings")
+    view_cnts = Column(Integer, nullable=False)
 
     def to_dict(self):
         """JobPosting 객체를 딕셔너리로 변환"""
@@ -50,6 +46,21 @@ class JobPosting(Base):
             "sal_code": self.sal_code,
             "poster_status": self.poster_status,
             "poster_writer_user_id": self.poster_writer_user_id,
+            "view_cnts": self.view_cnts,
+        }
+    
+    def to_brief_dict(self):
+        """JobPosting 객체를 딕셔너리로 변환"""
+        return {
+            "comp_id": self.comp_id,
+            "poster_id": self.poster_id,
+            "poster_title": self.poster_title,
+            "deadline_date": self.deadline_date.isoformat() if self.deadline_date else None,
+            "edu_code": self.edu_code,
+            "job_codes": self.job_codes,
+            "loc_codes": self.loc_codes,
+            "sal_code": self.sal_code,
+            "poster_status": self.poster_status,
         }
 
 # 정렬 로직을 함수로 분리
@@ -172,6 +183,93 @@ def create_job_posting(db: Session, comp_id: int, poster_id: str, poster_title: 
         db.rollback()
         return {"success": False, "message": str(e)}
 
+def create_filter_for_job_postings(params: dict):
+    """
+    JobPosting 검색 조건을 생성합니다.
+    :param params: 검색 필터 조건을 포함한 딕셔너리 (예: {"comp_id": 1, "job_sectors": "IT"})
+    :return: SQLAlchemy 필터 조건 (and_ 객체)
+    """
+    filters = []
+    
+    # 필터링 조건 적용 (AVAILABLE_FILTERS 기준)
+    for key, value in params.items():
+        if key == "title_contains":
+            filters.append(JobPosting.poster_title.ilike(f"%{value}%"))
+        elif key == "comp_id":
+            filters.append(JobPosting.comp_id == value)
+        elif key == "sal_code_eq":
+            filters.append(JobPosting.sal_code == value)
+        elif key == "sal_code_gte":
+            filters.append(JobPosting.sal_code >= value)
+        elif key == "sal_code_lte":
+            filters.append(JobPosting.sal_code <= value)
+        elif key == "edu_code_eq":
+            filters.append(JobPosting.edu_code == value)
+        elif key == "edu_code_gte":
+            filters.append(JobPosting.edu_code >= value)
+        elif key == "edu_code_lte":
+            filters.append(JobPosting.edu_code <= value)
+        elif key == "deadline_date_eq":
+            filters.append(JobPosting.deadline_date == datetime.strptime(value, "%Y-%m-%d"))
+        elif key == "deadline_date_gte":
+            filters.append(JobPosting.deadline_date >= datetime.strptime(value, "%Y-%m-%d"))
+        elif key == "deadline_date_lte":
+            filters.append(JobPosting.deadline_date <= datetime.strptime(value, "%Y-%m-%d"))
+        elif key == "loc_codes":
+            filters.append(JobPosting.loc_codes.in_(value))  # loc_codes는 리스트로 처리
+        elif key == "job_codes":
+            filters.append(JobPosting.job_codes.in_(value))  # job_codes는 리스트로 처리
+            
+    return and_(*filters)
+
+def get_available_job_postings(db: Session, page: int = 1, item_counts: int = 20, filters: dict = None, sort_criteria: dict = {"deadline_date": {"sorting_method": 0}}) -> dict:
+    """
+    마감일자가 지나지 않았거나, 무기한 연장된 JobPosting 목록 조회
+    :param db: SQLAlchemy Session
+    :param sort_criteria: 정렬 기준 (예: {"poster_title": {"sorting_method": 0}})
+    :param page: 조회할 페이지 번호 (기본값: 1)
+    :param item_counts: 페이지당 항목 수 (기본값: 20)
+    :param filters: 필터 조건 (딕셔너리 형태)
+    :return: 조회 결과 (성공 여부, 게시물 목록, 총 개수 등)
+    """
+    try:
+        # 기본 필터 조건 생성
+        query = db.query(JobPosting).filter(
+            and_(
+                JobPosting.poster_status < POSTER_STATUS_INACTIVE,
+                or_(
+                    JobPosting.poster_status == POSTER_STATUS_EXTENDED,
+                    JobPosting.deadline_date >= date.today()
+                )
+            )
+        )
+
+        # 추가 필터 조건 적용
+        if filters:
+            # 필터 조건을 사용하여 추가적인 조건 생성
+            additional_filters = create_filter_for_job_postings(filters)
+            query = query.filter(additional_filters)
+        
+        # 정렬 적용
+        query = _apply_ordering(query, sort_criteria)
+        
+        # 페이징 적용
+        offset = (page - 1) * item_counts
+        postings = query.offset(offset).limit(item_counts).all()
+        total_count = query.count()
+
+        return {
+            "success": True,
+            "postings": [posting.to_brief_dict() for posting in postings],
+            "total_count": total_count,
+            "current_page": page,
+            "total_page": (total_count + item_counts - 1) // item_counts
+        }
+    except ValueError as e:  # 유효하지 않은 정렬 기준 처리
+        return {"success": False, "message": str(e)}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
+
 def get_job_posting_by_id(db: Session, poster_id_input: str) -> dict:
     """poster_id로 JobPosting 정보 가져오기"""
     try:
@@ -219,6 +317,26 @@ def delete_job_posting(db: Session, poster_id_input: str) -> dict:
                 return {"success": False, "message": "JobPosting을 찾을 수 없습니다."}
             db.delete(posting)
         return {"success": True}
+    except Exception as e:
+        db.rollback()
+        return {"success": False, "message": str(e)}
+    
+def increment_view_count(db: Session, poster_id_input: str) -> dict:
+    """poster_id로 JobPosting의 view_cnts 값을 1 증가시킴"""
+    try:
+        # 해당 JobPosting을 찾기
+        posting = db.query(JobPosting).filter(JobPosting.poster_id == poster_id_input).first()
+        if not posting:
+            return {"success": False, "message": "JobPosting을 찾을 수 없습니다."}
+
+        # view_cnts 증가
+        posting.view_cnts += 1
+
+        # 변경사항 커밋
+        db.commit()
+        db.refresh(posting)
+
+        return {"success": True, "posting": posting.to_dict()}
     except Exception as e:
         db.rollback()
         return {"success": False, "message": str(e)}

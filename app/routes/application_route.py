@@ -5,7 +5,7 @@ from app.views.response import JsonResponse, fail
 from http import HTTPStatus
 from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 
-application = Namespace('auth', description='Application related operations')
+application = Namespace('application', description='Application related operations')
 
 @application.route('/')
 class Application(Resource):

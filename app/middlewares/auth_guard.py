@@ -1,3 +1,4 @@
+# app/middlewares/auth_guard.py
 from flask import request, jsonify, current_app, g
 from flask_jwt_extended import JWTManager, verify_jwt_in_request, jwt_required, create_access_token, create_refresh_token, get_jwt_identity, get_jwt
 from datetime import timedelta
@@ -13,6 +14,10 @@ class AuthGuard:
     """인증 및 권한 부여를 관리하는 클래스"""
 
     EXCLUDED_ENDPOINTS = {
+        'root': ['OPTIONS', 'HEAD', 'GET'],
+        'specs': ['OPTIONS', 'HEAD', 'GET'],
+        'restx_doc.static': ['OPTIONS', 'HEAD', 'GET'],
+        'doc': ['OPTIONS', 'HEAD', 'GET'],
         'auth_user_register': ['POST'],
         'auth_user_login': ['POST'],
         'auth_refresh_token' : ['POST'],
@@ -48,6 +53,13 @@ class AuthGuard:
         
         @app.before_request
         def authenticate():
+            print(request)
+            print(request.endpoint)
+            print(request.method)
+
+            if request.endpoint is None:
+                return
+
             if request.endpoint in AuthGuard.EXCLUDED_ENDPOINTS.keys():
                 if request.method in AuthGuard.EXCLUDED_ENDPOINTS[request.endpoint]:
                     return

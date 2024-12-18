@@ -742,6 +742,7 @@ class DBInitializer:
             sal_code INT NOT NULL,
             poster_status INT NOT NULL,
             poster_writer_user_id VARCHAR(255) NOT NULL,
+            view_cnts INT NOT NULL,
             FOREIGN KEY (comp_id) REFERENCES Company(comp_id),
             FOREIGN KEY (edu_code) REFERENCES EduCode(edu_code),
             FOREIGN KEY (sal_code) REFERENCES SalCode(sal_code),
@@ -765,8 +766,8 @@ class DBInitializer:
             INSERT INTO JobPosting (
                 comp_id, poster_id, poster_title, poster_link, job_sectors, job_career,
                 job_education, edu_code, edu_upper, deadline_date, last_updated_date,
-                job_codes, loc_codes, sal_code, poster_status, poster_writer_user_id
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                job_codes, loc_codes, sal_code, poster_status, poster_writer_user_id, view_cnts
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
     
             jobposting_data = []
@@ -794,7 +795,8 @@ class DBInitializer:
                         loc_codes,
                         data.get("sal_code"),
                         1,  # poster_status
-                        "admin"  # poster_writer_user_id
+                        "admin",  # poster_writer_user_id
+                        0 # view_cnts
                     )
                 
                     print(f"DEBUG: {record}", file=debug_file)  # 디버깅 출력

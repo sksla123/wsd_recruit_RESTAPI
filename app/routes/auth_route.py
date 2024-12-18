@@ -36,10 +36,9 @@ profile_update_model = auth.model('ProfileUpdateModel', {
     'new_value': fields.String(required=True, example='newSecurePassword123')
 })
 
-
-
 @auth.route('/register')
 class UserRegister(Resource):
+    @auth.expect(register_model)
     def post(self):
         """회원 가입을 처리합니다."""
         try:
@@ -94,7 +93,7 @@ class RefreshToken(Resource):
 
 @auth.route('/profile')
 class UserProfile(Resource):
-    def post(self):
+    def put(self):
         """회원정보를 수정합니다."""
         try:
             success, data, message, status = auth_service.update_user_profile(request.json)

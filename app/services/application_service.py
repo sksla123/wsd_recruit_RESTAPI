@@ -4,7 +4,6 @@ from ..models.database import get_db
 from ..models.user_applicated import create_user_applicated, ApplicationStatus, get_user_applicated_by_id, update_user_applicated
 from ..models.user_applicated_log import create_user_applicated_log, get_user_applicated_log_by_user_id, ApplicateAction
 
-
 def applicate(data):
     """
     지원하기 테스트 함수
