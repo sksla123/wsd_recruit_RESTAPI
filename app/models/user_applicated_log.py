@@ -18,7 +18,7 @@ class UserApplicatedLog(Base):
     __tablename__ = "UserApplicatedLog"
 
     application_log_id = Column(Integer, primary_key=True, autoincrement=True, nullable=False)
-    application_id = Column(Integer, ForeignKey("UserApplicated.application_id"), nullable=False)
+    application_id = Column(Integer, nullable=False)
     applicated_at = Column(DateTime, nullable=False, default=datetime.utcnow)
     user_id = Column(String(255), ForeignKey("User.user_id"), nullable=False)
     poster_id = Column(String(255), ForeignKey("JobPosting.poster_id"), nullable=False)
@@ -40,12 +40,15 @@ def get_user_applicated_logs(db: Session, page: int = 1, item_counts: int = 20) 
     offset = (page - 1) * item_counts
     total_count = db.query(UserApplicatedLog).count()
     logs = db.query(UserApplicatedLog).offset(offset).limit(item_counts).all()
-    return {
-        "success": True,
+    data = {
         "user_applicated_logs": [log.to_dict() for log in logs],
         "total_count": total_count,
         "current_page": page,
         "total_page": (total_count + item_counts - 1) // item_counts
+    }
+    return {
+        "success": True,
+        "data" : data
     }
 
 def create_user_applicated_log(db: Session, application_id: int, user_id: str, poster_id: str, applicate_action: int) -> dict:
@@ -68,12 +71,24 @@ def get_user_applicated_log_by_id(db: Session, application_log_id_input: int) ->
     else:
         return {"success": False, "message": "UserApplicatedLog not found"}
     
-def get_user_applicated_log_by_user_id(db: Session, application_log_user_id_input: int) -> dict:
-    """application_log_id로 UserApplicatedLog 정보를 가져오는 함수"""
-    log = db.query(UserApplicatedLog).filter(UserApplicatedLog.user_id == application_log_user_id_input).first()
-    if log:
-        return {"success": True, "user_applicated_log": log.to_dict()}
-    else:
+def get_user_applicated_log_by_user_id(db: Session, application_log_user_id_input: int, page: int = 1, item_counts: int = 20) -> dict:
+    """application_log_user_id로 UserApplicatedLog 정보를 가져오는 함수"""
+    try:
+        query = db.query(UserApplicatedLog)
+        offset = (page - 1) * item_counts
+        user_applicated_logs = query.offset(offset).limit(item_counts).all()
+        total_count = query.count()
+        data = {
+            "user_applicated_log": [user_applicated_log.to_dict() for user_applicated_log in user_applicated_logs],
+            "total_count": total_count,
+            "current_page": page,
+            "total_page": (total_count + item_counts - 1) // item_counts,
+        }
+        return {
+            "success": True,
+            "data": data
+        }
+    except:
         return {"success": False, "message": "UserApplicatedLog not found"}
 
 def delete_user_applicated_log(db: Session, application_log_id_input: int) -> dict:

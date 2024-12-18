@@ -51,10 +51,33 @@ def create_user_bookmark(db: Session, user_id: str, poster_id: str) -> dict:
 def get_user_bookmark_by_ids(db: Session, user_id_input: str, poster_id_input: str) -> dict:
     """user_id와 poster_id로 UserBookmark 정보를 가져오는 함수"""
     bookmark = db.query(UserBookmark).filter(and_(UserBookmark.user_id == user_id_input, UserBookmark.poster_id == poster_id_input)).first()
+    # print(bookmark)
     if bookmark:
         return {"success": True, "user_bookmark": bookmark.to_dict()}
     else:
         return {"success": False, "message": "UserBookmark not found"}
+
+def get_user_bookmark_by_user_id(db: Session, user_id_input: str, page: int = 1, item_counts: int = 20) -> dict:
+    """user_id로 정보를 가져오는 함수"""
+    try:
+        query = db.query(UserBookmark).filter(UserBookmark.user_id == user_id_input)
+        offset = (page - 1) * item_counts
+        bookmarks = query.offset(offset).limit(item_counts).all()
+        total_count = query.count()
+        data = {}
+
+        if bookmarks:
+            data = {
+                "user_bookmarks": [bookmark.to_dict() for bookmark in bookmarks],
+                "total_count": total_count,
+                "current_page": page,
+                "total_page": (total_count + item_counts - 1) // item_counts,
+            }
+            return {"success": True, "data": data, "message": "Successfully load user bookmark"}
+        else:
+            return {"success": False, "data": data, "message": "UserBookmark not found"}
+    except:
+        return {"success": False, "data": data, "message": "Error occurred while fetching UserBookmark"}
 
 def delete_user_bookmark(db: Session, user_id_input: str, poster_id_input: str) -> dict:
     """기존 UserBookmark 정보를 삭제하는 함수"""

@@ -51,6 +51,7 @@ class Applications(Resource):
     채용 공고 목록 관련 API
     """
     @job.doc(
+        security=None,
         description="채용 공고 목록을 조회합니다.",
         params={
             'page': '페이지 번호 (기본값: 1)',
@@ -427,6 +428,7 @@ class Application(Resource):
     특정 채용 공고 관련 API
     """
     @job.doc(
+        security=None,
         description="특정 채용 공고를 조회합니다.",
         responses={
             HTTPStatus.OK.value: '''

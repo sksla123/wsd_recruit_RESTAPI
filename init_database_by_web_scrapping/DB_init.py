@@ -863,7 +863,6 @@ class DBInitializer:
             user_id VARCHAR(255),
             poster_id VARCHAR(255),
             applicate_action INT,
-                        FOREIGN KEY (application_id) REFERENCES UserApplicated(application_id) ON DELETE CASCADE,
             FOREIGN KEY (user_id) REFERENCES User(user_id) ON DELETE CASCADE,
             FOREIGN KEY (poster_id) REFERENCES JobPosting(poster_id) ON DELETE CASCADE
         ) ENGINE=InnoDB

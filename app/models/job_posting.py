@@ -136,7 +136,7 @@ def get_available_job_postings_sorted_by(db: Session, sort_criteria: dict, page:
         query = _apply_ordering(query, sort_criteria)
         offset = (page - 1) * item_counts
         postings = query.offset(offset).limit(item_counts).all()
-        total_count = query.count()
+        total_count = query.count(JobPosting)
 
         return {
            "success": True,

@@ -2,6 +2,7 @@
 
 from sqlalchemy import Column, Integer, String, ForeignKey, Text
 from sqlalchemy.orm import declarative_base, relationship, Session
+from sqlalchemy import and_
 import enum
 
 from . import Base
@@ -37,12 +38,31 @@ def get_user_applicateds(db: Session, page: int = 1, item_counts: int = 20) -> d
     offset = (page - 1) * item_counts
     total_count = db.query(UserApplicated).count()
     applicateds = db.query(UserApplicated).offset(offset).limit(item_counts).all()
-    return {
-        "success": True,
+    data = {
         "user_applicateds": [applicated.to_dict() for applicated in applicateds],
         "total_count": total_count,
         "current_page": page,
         "total_page": (total_count + item_counts - 1) // item_counts
+    }
+    return {
+        "success": True,
+        "data": data
+    }
+
+def get_user_applications_by_user_id(db: Session, user_id: int, page: int = 1, item_counts: int = 20) -> dict:
+    """특정 사용자의 UserApplicated 목록을 조회하는 함수 (Pagination 적용)"""
+    offset = (page - 1) * item_counts
+    total_count = db.query(UserApplicated).filter(UserApplicated.user_id == user_id).count()
+    applicateds = db.query(UserApplicated).filter(UserApplicated.user_id == user_id).offset(offset).limit(item_counts).all()
+    data = {
+        "user_applicateds": [applicated.to_dict() for applicated in applicateds],
+        "total_count": total_count,
+        "current_page": page,
+        "total_page": (total_count + item_counts - 1) // item_counts
+    }
+    return {
+        "success": True,
+        "data": data
     }
 
 def create_user_applicated(db: Session, user_id: str, poster_id: str, application: str, application_status: int) -> dict:
@@ -62,6 +82,16 @@ def get_user_applicated_by_id(db: Session, application_id_input: int) -> dict:
     """application_id로 UserApplicated 정보를 가져오는 함수"""
     # print("a")
     applicated = db.query(UserApplicated).filter(UserApplicated.application_id == application_id_input).first()
+    # print(applicated)
+    if applicated:
+        return {"success": True, "user_applicated": applicated.to_dict()}
+    else:
+        return {"success": False, "message": "UserApplicated not found"}
+    
+def get_user_applicated_by_ids(db: Session, user_id_input: str, poster_id_input: int) -> dict:
+    """user_id와 poster_id로 UserApplicated 정보를 가져오는 함수"""
+    # print("a")
+    applicated = db.query(UserApplicated).filter(UserApplicated.user_id == user_id_input, UserApplicated.poster_id == poster_id_input).first()
     # print(applicated)
     if applicated:
         return {"success": True, "user_applicated": applicated.to_dict()}
