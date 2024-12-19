@@ -85,7 +85,7 @@ python -m init_database_by_web_scrapping.DB_init
 python -m run
 ```
 
-### 5. 실행과 관련된 문의가 있는 경우 issue에 글을 남겨주시면 확인하겠습니다.
+! 실행과 관련된 문의가 있는 경우 issue에 글을 남겨주시면 확인하겠습니다.
 
 ## 프로그램 설명
 사람인 데이터를 기반으로 채용/공고 사이트를 모방한 백엔드 API입니다.
@@ -164,3 +164,5 @@ loc code를 통해 해당 지역 정보를 획득득합니다
 **GET :/metas/salary**
 메타 테이블 중 salary Table 목록을 조회합니다
 ```
+
+### Swagger를 통해 테스트 시 JWT access token을 Authorize에 등록하면 편하게 테스트가 가능합니다!
