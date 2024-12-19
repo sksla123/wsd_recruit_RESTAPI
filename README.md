@@ -13,7 +13,17 @@
 conda install --file conda_py312_requirements.txt -c conda-forge
 ```
 
-이후 모든 작업은 requirements가 설치된 환경에서 진행해야 합니다.
+만약 위 방법으로 conda 환경 설치가 되지 않는다면 패키지화된 conda_env를 설치 후 활성화하세요
+```
+//패키지 압축해제 명령어
+tar -xvzf ./conda_env/py312_recruilting_restapi_conda_env_package.tar.gz -C ./conda_env
+
+//가상환경 활성화 명령어
+source ./conda_env/bin/activate
+```
+
+
+**! 이후 모든 작업은 requirements가 설치된 환경을 활성화 한 후 진행해야 합니다.**
 
 ### 2. .env를 작성하세요. 
 아래는 작성 예시입니다. .env 파일에는 민감한 정보가 포함될 수 있으므로 유출되지 않도록 조심하세요.
