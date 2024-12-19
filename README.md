@@ -6,15 +6,17 @@
 : run.py가 위치한 폴더가 프로젝트 최상단 폴더입니다.
 
 ### 1. pip, conda와 같은 파이썬 패키지 매니저를 통해 프로그램 구동에 필요한 requirements를 다운받으세요.
+현재 conda(파이썬 버전 3.12) 기준 등봉된 conda_py312_requirements.txt파일을 통해 설치할 수 있습니다. 
 ```
-// 현재 conda(파이썬 버전 3.12) 기준 등봉된 conda_py312_requirements.txt파일을 통해 설치할 수 있습니다. 
+// conda 환경 설치 명령어 예시
 // 설치시 conda-forge 채널을 추가할 것
 conda install --file conda_py312_requirements.txt -c conda-forge
 ```
 
 이후 모든 작업은 requirements가 설치된 환경에서 진행해야 합니다.
 
-### 2. .env를 작성하세요. (아래는 작성 예시입니다. .env 파일에는 민감한 정보가 포함될 수 있으므로 유출되지 않도록 조심하세요.)
+### 2. .env를 작성하세요. 
+아래는 작성 예시입니다. .env 파일에는 민감한 정보가 포함될 수 있으므로 유출되지 않도록 조심하세요.
 ```
 #/.env
 FLASK_BASE_URL=127.0.0.1 # 이 애플리케이션에 접속할 주소
@@ -40,20 +42,20 @@ JWT_REFRESH_TOKEN_EXPIRES=1440 # JWT 리프레쉬 토큰 만료 기간 (분 단�
 ADMIN_PASSWORD = your-admin-password 
 ``` 
 
-### 3. (선택사항) 초기 데이터 생성
+### (선택사항) 3. 초기 데이터 생성
 미리 구축된 DB 또는 데이터가 존재하지 않는 경우 init_database_by_web_scrapping 폴더의 scrap.py와 DB_init.py파일을 통해 데이터 생성 및 DB 구축을 실행할 수 있습니다.
 
-### 3-1. 크롤링 데이터가 아예 없는 경우
+### (선택사항) 3-1. 크롤링 데이터가 아예 없는 경우
 : 웹크롤링을 통해 데이터를 생성할 수 있습니다.
 
-**3-1.1. 웹 크롤러 실행하기**
+**(선택사항) 3-1.1. 웹 크롤러 실행하기**
 ! 시간이 굉장히 오래 걸릴 수 있습니다. (테스트 모드가 따로 있습니다.)
 ```
 python -m init_database_by_web_scrapping.scrap
 python -m init_database_by_web_scrapping.scrap --isTest // 테스트 모드로 실행하기(데이터가 제한됩니다.)
 ```
 
-**3-1.2. 생성된 결과물은 ./init_database_by_web_scrapping/data 폴더 안에 저장됩니다.**
+**(선택사항) 3-1.2. 생성된 결과물은 ./init_database_by_web_scrapping/data 폴더 안에 저장됩니다.**
 ```
 init_database_by_web_scrapping/
 ├── data/
@@ -63,8 +65,8 @@ init_database_by_web_scrapping/
 codetable_data_backup 파일: 코드 테이블 정보가 저장된 파일입니다.
 data_backup 파일: 잡포스터 정보가 저장된 파일입니다.
 
-### 3-2. 크롤링 데이터가 있는 경우
-**3-2.1. 아래 명령어를 통해 MySQL DB를 초기화화할 수 있습니다.**
+### (선택사항) 3-2. 크롤링 데이터가 있는 경우
+**(선택사항) 3-2.1. 아래 명령어를 통해 MySQL DB를 초기화할 수 있습니다.**
 ! 반드시 MySQL이 실행된 상태여야 합니다.
 ```
 python -m init_database_by_web_scrapping.DB_init
