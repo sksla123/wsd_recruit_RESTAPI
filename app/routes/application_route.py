@@ -87,7 +87,7 @@ class Application(Resource):
     @jwt_required()
     def get(self):
         """
-        지원 로그를 조회합니다.
+        사용자가 제출한 지원서를 조회합니다.
         """
         current_user = get_jwt_identity()
         success, data, message, status = application_service.get_user_applications(request.args.to_dict(), current_user)

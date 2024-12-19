@@ -293,6 +293,7 @@ class GetJobTable(Resource):
 @meta.route('/job/<int:job_code>')
 class GetJobName(Resource):
     @meta.doc(
+        security=None,
         params={
             'job_code': 'Job code, 이름을 알고 싶은 Job Code를 입력하세요.'
         },
@@ -476,6 +477,7 @@ class GetLocTable(Resource):
 @meta.route('/loc/<int:loc_code>')
 class GetLocData(Resource):
     @meta.doc(
+        security=None,
         params={
             'loc_code': 'loc code, 상세 정보를 알고 싶은 loc code를 입력하세요.'
         },

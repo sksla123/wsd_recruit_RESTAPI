@@ -34,6 +34,6 @@ def create_app():
     api.add_namespace(bookmark_route.bookmark, path='/bookmarks')
     api.add_namespace(meta_route.meta, path='/metas')
 
-    print(app.url_map)
+    # print(app.url_map)
 
     return app
