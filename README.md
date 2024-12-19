@@ -13,7 +13,8 @@
 conda install --file conda_py312_requirements.txt -c conda-forge
 ```
 
-만약 위 방법으로 conda 환경 설치가 되지 않는다면 패키지화된 conda_env를 설치 후 활성화하세요
+~~만약 위 방법으로 conda 환경 설치가 되지 않는다면 패키지화된 conda_env를 설치 후 활성화하세요~~
+(파일 용량이 커 업로드하지 않았습니다.)
 ```
 //패키지 압축해제 명령어
 tar -xvzf ./conda_env/py312_recruilting_restapi_conda_env_package.tar.gz -C ./conda_env

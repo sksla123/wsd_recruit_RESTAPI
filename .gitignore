@@ -26,3 +26,6 @@ log*
 **/log*
 log.out
 log.txt
+
+# 콘다 패키지 파일(LFS)
+conda_env/
