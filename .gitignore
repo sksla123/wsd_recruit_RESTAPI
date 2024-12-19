@@ -24,3 +24,5 @@ data/
 # 로그 파일
 log*
 **/log*
+log.out
+log.txt
