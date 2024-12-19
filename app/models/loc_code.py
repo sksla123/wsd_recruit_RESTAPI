@@ -29,15 +29,26 @@ def get_loc_codes(db: Session, page: int = 1, item_counts: int = 20) -> dict:
     """
     LocCode 목록을 조회하는 함수 (Pagination 적용)
     """
-    offset = (page - 1) * item_counts
-    loc_codes = db.query(LocCode).offset(offset).limit(item_counts).all()
-    total_count = db.query(LocCode).count()
-    return {
-        "loc_codes": [loc_code.to_dict() for loc_code in loc_codes],
-        "total_count": total_count,
-        "current_page": page,
-        "total_page": (total_count + item_counts - 1) // item_counts
-    }
+    try:
+        offset = (page - 1) * item_counts
+        loc_codes = db.query(LocCode).offset(offset).limit(item_counts).all()
+        total_count = db.query(LocCode).count()
+        data = {
+            "loc_codes": [loc_code.to_dict() for loc_code in loc_codes],
+            "total_count": total_count,
+            "current_page": page,
+            "total_page": (total_count + item_counts - 1) // item_counts
+        }
+        return {
+            "success": True,
+            "data": data,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "data": {},
+            "message": "Fail to load Location Table",
+        }
 
 def create_loc_code(db: Session, loc_code: int, loc_name: str, loc_mcode: int = None, loc_mname: str = None) -> dict:
     """

@@ -25,15 +25,26 @@ def get_job_codes(db: Session, page: int = 1, item_counts: int = 20) -> dict:
     """
     JobCode 목록을 조회하는 함수 (Pagination 적용)
     """
-    offset = (page - 1) * item_counts
-    job_codes = db.query(JobCode).offset(offset).limit(item_counts).all()
-    total_count = db.query(JobCode).count()
-    return {
-        "job_codes": [job_code.to_dict() for job_code in job_codes],
-        "total_count": total_count,
-        "current_page": page,
-        "total_page": (total_count + item_counts - 1) // item_counts
-    }
+    try:
+        offset = (page - 1) * item_counts
+        job_codes = db.query(JobCode).offset(offset).limit(item_counts).all()
+        total_count = db.query(JobCode).count()
+        data = {
+            "job_codes": [job_code.to_dict() for job_code in job_codes],
+            "total_count": total_count,
+            "current_page": page,
+            "total_page": (total_count + item_counts - 1) // item_counts
+        }
+        return {
+            "success": True,
+            "data": data,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "data": {},
+            "message": "Fail to load Job Table",
+        }
 
 def create_job_code(db: Session, job_code: int, job_name: str) -> dict:
     """

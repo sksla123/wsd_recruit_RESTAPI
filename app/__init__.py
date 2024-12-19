@@ -27,10 +27,13 @@ def create_app():
     AuthGuard.init_app(app)
         
     # 라우트 추가
-    from app.routes import auth_route, application_route, job_route, bookmark_route
+    from app.routes import auth_route, application_route, job_route, bookmark_route, meta_route
     api.add_namespace(auth_route.auth, path='/auth')
     api.add_namespace(application_route.application, path='/applications')
     api.add_namespace(job_route.job, path='/jobs')
     api.add_namespace(bookmark_route.bookmark, path='/bookmarks')
+    api.add_namespace(meta_route.meta, path='/metas')
+
+    print(app.url_map)
 
     return app

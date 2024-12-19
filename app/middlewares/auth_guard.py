@@ -23,7 +23,13 @@ class AuthGuard:
         'auth_user_login': ['POST'],
         'auth_refresh_token' : ['POST'],
         'job_applications' : ['GET'],
-        'job_application': ['GET']
+        'job_application': ['GET'],
+        'meta_get_salary_table': ['GET'],
+        'meta_get_education_table': ['GET'],
+        'meta_get_job_table': ['GET'],
+        'meta_get_loc_table': ['GET'],
+        'meta_get_job_name': ['GET'],
+        'meta_get_loc_data': ['GET'],
     }
 
     test = False

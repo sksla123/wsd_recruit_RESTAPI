@@ -25,15 +25,27 @@ def get_edu_codes(db: Session, page: int = 1, item_counts: int = 20) -> dict:
     """
     EduCode 목록을 조회하는 함수 (Pagination 적용)
     """
-    offset = (page - 1) * item_counts
-    edu_codes = db.query(EduCode).offset(offset).limit(item_counts).all()
-    total_count = db.query(EduCode).count()
-    return {
-        "edu_codes": [edu_code.to_dict() for edu_code in edu_codes],
-        "total_count": total_count,
-        "current_page": page,
-        "total_page": (total_count + item_counts - 1) // item_counts
-    }
+    try:
+        offset = (page - 1) * item_counts
+        edu_codes = db.query(EduCode).offset(offset).limit(item_counts).all()
+        total_count = db.query(EduCode).count()
+        data = {
+            "edu_codes": [edu_code.to_dict() for edu_code in edu_codes],
+            "total_count": total_count,
+            "current_page": page,
+            "total_page": (total_count + item_counts - 1) // item_counts
+        }
+        return {
+            "success": True,
+            "data": data,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "data": {},
+            "message": "Fail to load Education Table",
+        }
+
 
 def create_edu_code(db: Session, edu_code: int, edu_name: str) -> dict:
     """

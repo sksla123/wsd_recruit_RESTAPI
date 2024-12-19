@@ -25,15 +25,26 @@ def get_sal_codes(db: Session, page: int = 1, item_counts: int = 20) -> dict:
     """
     SalCode 목록을 조회하는 함수 (Pagination 적용)
     """
-    offset = (page - 1) * item_counts
-    sal_codes = db.query(SalCode).offset(offset).limit(item_counts).all()
-    total_count = db.query(SalCode).count()
-    return {
-        "sal_codes": [sal_code.to_dict() for sal_code in sal_codes],
-        "total_count": total_count,
-        "current_page": page,
-        "total_page": (total_count + item_counts - 1) // item_counts
-    }
+    try:
+        offset = (page - 1) * item_counts
+        sal_codes = db.query(SalCode).offset(offset).limit(item_counts).all()
+        total_count = db.query(SalCode).count()
+        data = {
+            "sal_codes": [sal_code.to_dict() for sal_code in sal_codes],
+            "total_count": total_count,
+            "current_page": page,
+            "total_page": (total_count + item_counts - 1) // item_counts
+        }
+        return {
+            "success": True,
+            "data": data,
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "data": {},
+            "message": "Fail to load Salary Table",
+        }
 
 def create_sal_code(db: Session, sal_code: int, sal_name: str) -> dict:
     """
