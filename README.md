@@ -93,6 +93,7 @@ python -m run
 ![Screenshot-20241219225554](https://github.com/user-attachments/assets/05f9b1d9-c5c6-4a8f-9c7b-02459b210d41)
 
 ### AUTH, 사용자 및 인증 관련 api
+```
 **POST :/auth/login**
 로그인을 처리합니다
 
@@ -107,8 +108,9 @@ python -m run
 
 **POST :/auth/register**
 회원 가입을 처리합니다
-
+```
 ### APPLICATION, 지원서 관련 api
+```
 **PUT :/applications/**
 지원 신청 내용을 업데이트 합니다(로그인 필요)
 
@@ -123,22 +125,25 @@ python -m run
 
 **DELETE :/applications/{application_id}**
 지원을 취소합니다(로그인 필요)
-
+```
 ### JOB, 채용 공고 관련 api
+```
 **GET :/jobs/**
 채용 공고 목록을 조회합니다
 
 **GET: /jobs/{poster_id}**
 특정 채용 공고를 조회합니다
-
+```
 ### BOOKMARK, 사용자 북마크 관련 api
+```
 **GET :/bookmarks/**
 북마크 목록을 조회합니다(로그인 필요)
 
 **POST :/bookmarks/{poster_id}**
 해당 포스터를 북마크 등록/해제 합니다(로그인 필요)
-
+```
 ### META, 코드화 된 데이터 해석에 필요한 기타 메타 정보를 획득할 수 있는 테이블
+```
 **GET :/metas/edu**
 메타 테이블 중 education 목록을 조회합니다
 
@@ -156,3 +161,4 @@ loc code를 통해 해당 지역 정보를 획득득합니다
 
 **GET :/metas/salary**
 메타 테이블 중 salary Table 목록을 조회합니다
+```
