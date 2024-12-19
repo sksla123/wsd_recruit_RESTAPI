@@ -2,10 +2,10 @@
 
 
 ## 프로그램 사용법
-# 0. Working directory를 프로젝트 최상단 폴더로 이동하세요.
+### 0. Working directory를 프로젝트 최상단 폴더로 이동하세요.
 : run.py가 위치한 폴더가 프로젝트 최상단 폴더입니다.
 
-# 1. pip, conda와 같은 파이썬 패키지 매니저를 통해 프로그램 구동에 필요한 requirements를 다운받으세요.
+### 1. pip, conda와 같은 파이썬 패키지 매니저를 통해 프로그램 구동에 필요한 requirements를 다운받으세요.
 ```
 // 현재 conda(파이썬 버전 3.12) 기준 등봉된 conda_py312_requirements.txt파일을 통해 설치할 수 있습니다. 
 // 설치시 conda-forge 채널을 추가할 것
@@ -14,7 +14,7 @@ conda install --file conda_py312_requirements.txt -c conda-forge
 
 이후 모든 작업은 requirements가 설치된 환경에서 진행해야 합니다.
 
-# 2. .env를 작성하세요. (아래는 작성 예시입니다. .env 파일에는 민감한 정보가 포함될 수 있으므로 유출되지 않도록 조심하세요.)
+### 2. .env를 작성하세요. (아래는 작성 예시입니다. .env 파일에는 민감한 정보가 포함될 수 있으므로 유출되지 않도록 조심하세요.)
 ```
 #/.env
 FLASK_BASE_URL=127.0.0.1 # 이 애플리케이션에 접속할 주소
@@ -40,10 +40,10 @@ JWT_REFRESH_TOKEN_EXPIRES=1440 # JWT 리프레쉬 토큰 만료 기간 (분 단�
 ADMIN_PASSWORD = your-admin-password 
 ``` 
 
-# 3. (선택사항) 초기 데이터 생성
+### 3. (선택사항) 초기 데이터 생성
 미리 구축된 DB 또는 데이터가 존재하지 않는 경우 init_database_by_web_scrapping 폴더의 scrap.py와 DB_init.py파일을 통해 데이터 생성 및 DB 구축을 실행할 수 있습니다.
 
-# 3-1. 크롤링 데이터가 아예 없는 경우
+### 3-1. 크롤링 데이터가 아예 없는 경우
 : 웹크롤링을 통해 데이터를 생성할 수 있습니다.
 
 **3-1.1. 웹 크롤러 실행하기**
@@ -63,7 +63,7 @@ init_database_by_web_scrapping/
 codetable_data_backup 파일: 코드 테이블 정보가 저장된 파일입니다.
 data_backup 파일: 잡포스터 정보가 저장된 파일입니다.
 
-# 3-2. 크롤링 데이터가 있는 경우
+### 3-2. 크롤링 데이터가 있는 경우
 **3-2.1. 아래 명령어를 통해 MySQL DB를 초기화화할 수 있습니다.**
 ! 반드시 MySQL이 실행된 상태여야 합니다.
 ```
@@ -78,12 +78,12 @@ python -m init_database_by_web_scrapping.DB_init
 20241231000000_data_backup.pkl -> selected_data_backup.pkl # 날짜는 예시
 ```
 
-# 4. 아래 명령어를 통해 application을 실행하세요.
+### 4. 아래 명령어를 통해 application을 실행하세요.
 ```
 python -m run
 ```
 
-# 5. 실행과 관련된 문의가 있는 경우 issue에 글을 남겨주시면 확인하겠습니다.
+### 5. 실행과 관련된 문의가 있는 경우 issue에 글을 남겨주시면 확인하겠습니다.
 
 ## 프로그램 설명
 사람인 데이터를 기반으로 채용/공고 사이트를 모방한 백엔드 API입니다.
@@ -92,7 +92,7 @@ python -m run
 : (Swagger 문서 참조(라우트: /api-docs))
 ![Screenshot-20241219225554](https://github.com/user-attachments/assets/05f9b1d9-c5c6-4a8f-9c7b-02459b210d41)
 
-# AUTH, 사용자 및 인증 관련 api
+### AUTH, 사용자 및 인증 관련 api
 **POST :/auth/login**
 로그인을 처리합니다
 
@@ -108,7 +108,7 @@ python -m run
 **POST :/auth/register**
 회원 가입을 처리합니다
 
-# APPLICATION, 지원서 관련 api
+### APPLICATION, 지원서 관련 api
 **PUT :/applications/**
 지원 신청 내용을 업데이트 합니다(로그인 필요)
 
@@ -124,21 +124,21 @@ python -m run
 **DELETE :/applications/{application_id}**
 지원을 취소합니다(로그인 필요)
 
-# JOB, 채용 공고 관련 api
+### JOB, 채용 공고 관련 api
 **GET :/jobs/**
 채용 공고 목록을 조회합니다
 
 **GET: /jobs/{poster_id}**
 특정 채용 공고를 조회합니다
 
-# BOOKMARK, 사용자 북마크 관련 api
+### BOOKMARK, 사용자 북마크 관련 api
 **GET :/bookmarks/**
 북마크 목록을 조회합니다(로그인 필요)
 
 **POST :/bookmarks/{poster_id}**
 해당 포스터를 북마크 등록/해제 합니다(로그인 필요)
 
-# META, 코드화 된 데이터 해석에 필요한 기타 메타 정보를 획득할 수 있는 테이블
+### META, 코드화 된 데이터 해석에 필요한 기타 메타 정보를 획득할 수 있는 테이블
 **GET :/metas/edu**
 메타 테이블 중 education 목록을 조회합니다
 
