@@ -14,7 +14,7 @@ def string_to_bool(s):
 
 class Config:
     # Flask Configuration
-    FLASK_BASE_URL = os.getenv('FLASK_BASE_URL', 'http://localhost')
+    FLASK_BASE_URL = os.getenv('FLASK_BASE_URL', '127.0.0.1')
     FLASK_PORT = os.getenv('FLASK_PORT', '5000')
     FLASK_DEBUG_MODE = string_to_bool(os.getenv('FLASK_DEBUG_MODE', 'False'))
 
@@ -23,7 +23,7 @@ class Config:
     MySQL_DB_PORT = int(os.getenv('MySQL_DB_PORT', '3306'))
     MySQL_DB_USER = os.getenv('MySQL_DB_USER', 'root')
     MySQL_DB_PASSWORD = os.getenv('MySQL_DB_PASSWORD', '')
-    MySQL_DB_NAME = os.getenv('MySQL_DB_NAME', 'myapp')
+    MySQL_DB_NAME = os.getenv('MySQL_DB_NAME', 'WSDa3')
 
     # Redis Configuration (현재 사용하지 않음)
     REDIS_DB_URL = os.getenv('REDIS_DB_URL', 'localhost')
