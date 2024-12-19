@@ -105,7 +105,7 @@ class GetSalaryTable(Resource):
     )
     def get(self):
         """
-        메타 테이블블 목록을 조회합니다.
+        메타 테이블 중 salary Table 목록을 조회합니다.
 
         Returns:
             flask.Response: JSON 형태의 응답
@@ -165,7 +165,7 @@ class GetEducationTable(Resource):
     )
     def get(self):
         """
-        메타 테이블블 목록을 조회합니다.
+        메타 테이블 중 education 목록을 조회합니다.
 
         Returns:
             flask.Response: JSON 형태의 응답
@@ -279,7 +279,7 @@ class GetJobTable(Resource):
     )
     def get(self):
         """
-        메타 테이블블 목록을 조회합니다.
+        메타 테이블 중 job 테이블 목록을 조회합니다.
 
         Returns:
             flask.Response: JSON 형태의 응답
@@ -313,7 +313,7 @@ class GetJobName(Resource):
     })
     def get(self, job_code):
         """
-        지원을 취소합니다.
+        job_code를 통해 job_name을 획득합니다.
         """
         success, data, message, status = meta_service.get_job_name(job_code)
         return JsonResponse(success, data, message, status).to_response()
@@ -462,7 +462,7 @@ class GetLocTable(Resource):
     )
     def get(self):
         """
-        메타 테이블블 목록을 조회합니다.
+        메타 테이블 중 location 테이블 목록을 조회합니다.
 
         Returns:
             flask.Response: JSON 형태의 응답
@@ -498,7 +498,7 @@ class GetLocData(Resource):
     })
     def get(self, loc_code):
         """
-        지원을 취소합니다.
+        loc code를 통해 해당 지역 정보를 획득득합니다.
         """
         success, data, message, status = meta_service.get_loc_data(loc_code)
         return JsonResponse(success, data, message, status).to_response()

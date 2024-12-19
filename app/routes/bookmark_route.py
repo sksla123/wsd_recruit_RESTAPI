@@ -45,13 +45,20 @@ class GetBookmarks(Resource):
 class ApplicationCancel(Resource):
     @bookmark.doc(
         responses={
-        200: '''''',
-        404: ''''''
+        200: '''{
+  "status": "success",
+  "message": "북마크가 성공적으로 등록되었습니다.",
+  "data": {}
+}''',
+        404: '''{
+  "status": "failed",
+  "message": "요청하신 포스터는 존재하지 않습니다."
+}'''
     })
     @jwt_required()
     def post(self, poster_id):
         """
-        지원을 취소합니다.
+        해당 포스터를 북마크 등록/해제 합니다. (상태 토클)
         """
         current_user = get_jwt_identity()
         success, data, message, status = bookmark_service.toggle_bookmark(current_user, poster_id)

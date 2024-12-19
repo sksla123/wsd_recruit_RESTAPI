@@ -17,6 +17,9 @@ def toggle_bookmark(user_id, poster_id):
                 return True, {}, "북마크가 해제되었습니다.", 200
         raise Exception
     except Exception as e:
+        if "pymysql.err.IntegrityError" in message:
+            return False, None, "요청하신 포스터는 존재하지 않습니다.", 400
+
         return False, None, "Unknown Error is occured while toggling bookmark", 500
 
 def register_bookmark(user_id, poster_id):
@@ -38,7 +41,7 @@ def register_bookmark(user_id, poster_id):
         result = create_user_bookmark(db, user_id, poster_id)
         print(result)
         if result['success']:
-            return True, result['user_bookmark'], "북마크가 성공적으로 등록되었습니다.", 201
+            return True, result['user_bookmark'], "북마크가 성공적으로 등록되었습니다.", 200
         else:
             return False, None, result['error'], 400
     except Exception as e:
