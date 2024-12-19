@@ -43,7 +43,7 @@ ADMIN_PASSWORD = your-admin-password
 ``` 
 
 ### (선택사항) 3. 초기 데이터 생성
-미리 구축된 DB 또는 데이터가 존재하지 않는 경우 init_database_by_web_scrapping 폴더의 scrap.py와 DB_init.py파일을 통해 데이터 생성 및 DB 구축을 실행할 수 있습니다.
+미리 구축된 DB 또는 데이터가 존재하지 않는 경우 init_database_by_web_scrapping 폴더의 scrap.py와 DB_init.py파일을 통해 데이터 생성 및 DB 구축을 실행할 수 있습니다. 만약 이미 sql파일 또는 MySQL이 구축된 상황이라면 추가로 진행할 필요는 없습니다.
 
 ### (선택사항) 3-1. 크롤링 데이터가 아예 없는 경우
 : 웹크롤링을 통해 데이터를 생성할 수 있습니다.
