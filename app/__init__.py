@@ -15,7 +15,7 @@ def create_app():
 
     api = Api(app,
               version='1.0',
-              title='Recruilting Backend REST API',
+              title='Recruiting Backend REST API',
               description='백엔드 api 구현',
               doc='/api-docs',
               authorizations=authorizations,
