@@ -1,7 +1,56 @@
-## !!! 빠른 배포를 위한 도커 이미지 제작 중 !!!
+# 빠른 배포를 위한 도커 이미지
+## **도커 사용법**
+### 1. 워킹 디렉토리를 docker_compose 폴더로 설정합니다.
+### 2. docker-compose.yaml 파일을 수정합니다.
+```
+services:
+  wsd_recruiting_rest_api:
+    image: sksla123/wsd_recruiting_rest_api:latest
+    container_name: wsd_recruiting_rest_api
+    environment:
+      # 여기서 원하는 모드 선택 가능
+      # 내부 데이터 베이스를 사용하는 모드
+
+      # 웹 스크랩 부터 데이터를 다시 넣습니다. (data 폴더에 아무것도 없어도 작동합니다.)
+      # - CONTAINER_INIT_MODE=FROM_SCRAPPING  
+
+      # DB 초기화부터  시작합니다. data 폴더에 'selected_codetable_data_backup.pkl'과 'selected_data_backup.pkl' 파일을 반드시 넣어주세요.
+      # 이 파일은 init_database_by_web_scrapping/scrap.py의 결과물과 같습니다.
+      # - CONTAINER_INIT_MODE=FROM_DB_INITIALIZING
+
+      # dump.sql을 가지고 초기화합니다.
+      # data 폴더에 dump.sql 파일을 반드시 넣어주세요.
+      - CONTAINER_INIT_MODE=USE_INTERNAL_DB
 
 
-## 프로그램 사용법
+      # 외부 데이터 베이스를 사용하는 모드
+      # data 폴더에 .env 파일을 반드시 넣어주세요. (.env 형식은 README.md의 프로그램 사용법에에 정의된 내용을 참조하세요.)
+      # - CONTAINER_INIT_MODE=USE_EXTERNAL_DB
+    volumes:
+      - /var/lib/mysql:/var/lib/mysql
+      - ./data:/DATA
+    ports:
+      - "3000:5000" # 적절한 포트포워딩 규칙을 설정하세요.
+```
+### 3. CONTAINER_INIT_MODE에 맞게 적절한 파일을 ./data 폴더에 집어넣어 주세요.
+### 아래 명령어를 통해 도커를 실행할 수 있습니다.
+```
+docker compose up
+```
+
+**종료 명령어는 아래와 같습니다.**
+```
+docker compose down
+```
+
+### 도커 사용시 주의 사항
+**! data 폴더에 생성된 initialize_flag 파일을 삭제할 경우 MySQL DB가 날라갈 수 있습니다.**
+**! CONTAINER_INIT_MODE=FROM_SCRAPPING 사용시 굉장히 오랜 시간이 걸릴 수 있습니다. (50~100시간)**
+: IP 차단을 피하기 위해 멀티 프로세싱 기법을 사용하지 않았습니다.
+: 모든 데이터를 긁어옵니다.
+**! CONTAINER_INIT_MODE=FROM_DB_INITIALIZING 사용시 데이터 크기에 따라 오랜시간이 소요될 수 있습니다 (~3시간)**
+
+# 프로그램 사용법
 ### 0. Working directory를 프로젝트 최상단 폴더로 이동하세요.
 : run.py가 위치한 폴더가 프로젝트 최상단 폴더입니다.
 
