@@ -36,13 +36,12 @@ class DBInitializer:
         
         self.scrap_base_url = "https://www.saramin.co.kr"
         
-        self.db_url = os.getenv("MySQL_DB_URL")
-        # self._db_port = os.getenv("MySQL_DB_PORT")
-        self.db_port = int(os.getenv("MySQL_DB_PORT"))  # 포트 번호는 정수형으로 변환
-        self.db_user = os.getenv("MySQL_DB_USER")
-        self.db_password = os.getenv("MySQL_DB_PASSWORD")
-        self.db_name = os.getenv("MySQL_DB_NAME")
-        self.admin_password = os.getenv("ADMIN_PASSWORD")
+        self.db_url =  os.getenv('MySQL_DB_URL', '127.0.0.1')
+        self.db_port = int(os.getenv('MySQL_DB_PORT', '3306'))  # 포트 번호는 정수형으로 변환
+        self.db_user = os.getenv('MySQL_DB_USER', 'root')
+        self.db_password = os.getenv('MySQL_DB_PASSWORD', 'root')
+        self.db_name = os.getenv('MySQL_DB_NAME', 'WSDa3')
+        self.admin_password = os.getenv("ADMIN_PASSWORD", "admin")
         
         self.code_table_pkl_file_path = code_table_pkl_file_path
         self.job_data_pkl_file_path = job_data_pkl_file_path
@@ -167,7 +166,7 @@ class DBInitializer:
         self.groups = list(groups)
         self.companys = list(companys)
 
-    def connect_to_db(self):
+    def _connect_to_db(self):
         """
         데이터베이스에 연결합니다.
 
@@ -187,6 +186,51 @@ class DBInitializer:
         except pymysql.Error as err:
             print(f"데이터베이스 연결 오류: {err}")
             raise
+
+        import pymysql
+
+    def connect_to_db(self):
+        """
+        데이터베이스에 연결합니다. 지정된 데이터베이스가 없으면 생성합니다.
+
+        Returns:
+            pymysql.connections.Connection: 데이터베이스 연결 객체
+        """
+        try:
+            # 기본 연결 (기본 데이터베이스는 None)
+            mydb = pymysql.connect(
+                host=self.db_url,
+                port=self.db_port,
+                user=self.db_user,
+                password=self.db_password
+            )
+            
+            print("데이터베이스 연결 성공")
+
+            # 커서 생성
+            cursor = mydb.cursor()
+
+            # 데이터베이스가 존재하는지 확인
+            cursor.execute(f"SHOW DATABASES LIKE '{self.db_name}'")
+            result = cursor.fetchone()
+
+            # 데이터베이스가 존재하지 않으면 생성
+            if not result:
+                cursor.execute(f"CREATE DATABASE {self.db_name}")
+                print(f"데이터베이스 '{self.db_name}' 생성 완료")
+
+            # 지정된 데이터베이스로 연결
+            mydb.select_db(self.db_name)
+
+            return mydb
+        except pymysql.Error as err:
+            print(f"데이터베이스 연결 오류: {err}")
+            raise
+        finally:
+            # 커서 닫기 (연결이 성공적으로 이루어졌다면)
+            if 'cursor' in locals():
+                cursor.close()
+
 
     def _drop_database(self):
         try:

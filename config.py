@@ -19,14 +19,14 @@ class Config:
     FLASK_DEBUG_MODE = string_to_bool(os.getenv('FLASK_DEBUG_MODE', 'False'))
 
     # MySQL Configuration
-    MySQL_DB_URL = os.getenv('MySQL_DB_URL', 'localhost')
+    MySQL_DB_URL = os.getenv('MySQL_DB_URL', '127.0.0.1')
     MySQL_DB_PORT = int(os.getenv('MySQL_DB_PORT', '3306'))
     MySQL_DB_USER = os.getenv('MySQL_DB_USER', 'root')
-    MySQL_DB_PASSWORD = os.getenv('MySQL_DB_PASSWORD', '')
+    MySQL_DB_PASSWORD = os.getenv('MySQL_DB_PASSWORD', 'root')
     MySQL_DB_NAME = os.getenv('MySQL_DB_NAME', 'WSDa3')
 
     # Redis Configuration (현재 사용하지 않음)
-    REDIS_DB_URL = os.getenv('REDIS_DB_URL', 'localhost')
+    REDIS_DB_URL = os.getenv('REDIS_DB_URL', '127.0.0.1')
     REDIS_DB_PORT = int(os.getenv('REDIS_DB_PORT', '6379'))
     REDIS_DB_PASSWORD = os.getenv('REDIS_DB_PASSWORD', '')
 
